@@ -1,5 +1,5 @@
 [package]
-name = "Adventure_MC"
+name = "mineblock"
 version = "0.1.0"
 authors = ["Andrew Shen <andrewshen31@gmail.com>"]
 edition = "2018"
@@ -18,3 +18,5 @@ vulkano-shaders = "0.13"
 vulkano-win = "0.18.0"
 winit = "0.22.0"
 cgmath = "0.17.0"
+
+png = "0.16.2"
