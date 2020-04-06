@@ -29,7 +29,7 @@ use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder, Fullscreen};
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Point3, Vector3, Deg, Rad, Euler};
+use cgmath::{Matrix4, Point3, Vector3, Deg, Rad, Euler, Angle};
 use cgmath::perspective;
 
 use png;
@@ -84,40 +84,40 @@ fn main() {
     let matrix_buffer = CpuBufferPool::uniform_buffer(device.clone());
 
     let vertex = vec![
-        renderer::Vertex { position: [-1.0, -1.0, -1.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [ 1.0, -1.0, -1.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [ 1.0,  1.0, -1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [-1.0,  1.0, -1.0], txtr_crd: [0.0, 1.0], },
+        renderer::Vertex { position: [0.0,0.0,0.0], txtr_crd: [0.0, 0.0], },
+        renderer::Vertex { position: [1.0,0.0,0.0], txtr_crd: [1.0, 0.0], },
+        renderer::Vertex { position: [1.0,1.0,0.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,1.0,0.0], txtr_crd: [0.0, 1.0], },
 
-        renderer::Vertex { position: [-1.0, -1.0,  1.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [ 1.0, -1.0,  1.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [ 1.0,  1.0,  1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [-1.0,  1.0,  1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,0.0,1.0], txtr_crd: [0.0, 0.0], },
+        renderer::Vertex { position: [1.0,0.0,1.0], txtr_crd: [1.0, 0.0], },
+        renderer::Vertex { position: [1.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
 
-        renderer::Vertex { position: [-1.0, -1.0, -1.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [ 1.0, -1.0, -1.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [ 1.0, -1.0,  1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [-1.0, -1.0,  1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,0.0,0.0], txtr_crd: [0.0, 0.0], },
+        renderer::Vertex { position: [1.0,0.0,0.0], txtr_crd: [1.0, 0.0], },
+        renderer::Vertex { position: [1.0,0.0,1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,0.0,1.0], txtr_crd: [1.0, 1.0], },
 
-        renderer::Vertex { position: [-1.0,  1.0, -1.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [ 1.0,  1.0, -1.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [ 1.0,  1.0,  1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [-1.0,  1.0,  1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,1.0,0.0], txtr_crd: [0.0, 0.0], },
+        renderer::Vertex { position: [1.0,1.0,0.0], txtr_crd: [1.0, 0.0], },
+        renderer::Vertex { position: [1.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
 
-        renderer::Vertex { position: [-1.0, -1.0, -1.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [-1.0,  1.0, -1.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [-1.0,  1.0,  1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [-1.0, -1.0,  1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,0.0,0.0], txtr_crd: [0.0, 0.0], },
+        renderer::Vertex { position: [0.0,1.0,0.0], txtr_crd: [1.0, 0.0], },
+        renderer::Vertex { position: [0.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [0.0,0.0,1.0], txtr_crd: [1.0, 1.0], },
 
-        renderer::Vertex { position: [ 1.0, -1.0, -1.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [ 1.0,  1.0, -1.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [ 1.0,  1.0,  1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [ 1.0, -1.0,  1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [1.0,0.0,0.0], txtr_crd: [0.0, 0.0], },
+        renderer::Vertex { position: [1.0,1.0,0.0], txtr_crd: [1.0, 0.0], },
+        renderer::Vertex { position: [1.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
+        renderer::Vertex { position: [1.0,0.0,1.0], txtr_crd: [1.0, 1.0], },
     ];
 
-    let index: Vec<u16> = vec![0,1,2,0,2,3,
-                               4,5,6,4,6,7,
-                               8,9,10,8,10,11,
+    let index: Vec<u16> = vec![ 0, 1, 2, 0, 2, 3,
+                                4, 5, 6, 4, 6, 7,
+                                8, 9,10, 8,10,11,
                                12,13,14,12,14,15,
                                16,17,18,16,18,19,
                                20,21,22,20,22,23,];
@@ -196,7 +196,7 @@ fn main() {
     use winit::dpi::Position;
 
     let mut position = Point3::new(0.0, 0.0, 0.0);  // the position of the player's camera
-    let mut rotation = Euler::new(0.0, 0.0, 0.0);  // the rotation of the player's camera in Radian
+    let mut rotation = Euler::new(Deg(0.0 as f32), Deg(0.0), Deg(0.0));  // the rotation of the player's camera in Radian
     let mut pressed: Vec<K> = Vec::new();
 
     event_loop.run(move |event, _, control_flow| {
@@ -243,8 +243,8 @@ fn main() {
             },
             Event::DeviceEvent { event: DeviceEvent::MouseMotion { delta: delta }, .. } => {
                 // println!("{} {}", delta.0, delta.1);
-                rotation.x -= delta.1/10.0;
-                rotation.y += delta.0/10.0;
+                rotation.x -= Deg(delta.1 as f32/10.0);
+                rotation.y += Deg(delta.0 as f32/10.0);
 
                 surface.window().set_cursor_position(
                     Position::Physical(PhysicalPosition{ x: dimensions[0] as i32/2, y: dimensions[1] as i32/2 })
@@ -255,10 +255,11 @@ fn main() {
             // this calls last after all the event finishes emitting
             // and only calls once, which is great for updating mutable variables since it'll be uniform
             Event::MainEventsCleared => {
-                if pressed.contains(&K::A) {position.x += speed}
-                if pressed.contains(&K::D) {position.x -= speed}
-                if pressed.contains(&K::W) {position.z -= speed}
-                if pressed.contains(&K::S) {position.z += speed}
+                // only translating relative from the x rotation
+                if pressed.contains(&K::A) {position.x -= speed * Rad(rotation.y).0.cos(); position.z += speed * Rad(rotation.y).0.sin()}
+                if pressed.contains(&K::D) {position.x += speed * Rad(rotation.y).0.cos(); position.z -= speed * Rad(rotation.y).0.sin()}
+                if pressed.contains(&K::W) {position.z += speed * Rad(rotation.y).0.cos(); position.x += speed * Rad(rotation.y).0.sin()}
+                if pressed.contains(&K::S) {position.z -= speed * Rad(rotation.y).0.cos(); position.x -= speed * Rad(rotation.y).0.sin()}
                 if pressed.contains(&K::LShift) {position.y -= speed}
                 if pressed.contains(&K::Space)  {position.y += speed}
             },
@@ -268,8 +269,8 @@ fn main() {
 
                 let mut proj = perspective (Rad::from(Deg(60.0)), dimensions[0] as f32/dimensions[1] as f32, 0.2 , 1000.0);
                 let mut view =
-                    Matrix4::from_angle_x(Deg(rotation.x as f32)) * Matrix4::from_angle_y(Deg(rotation.y as f32)) *
-                    Matrix4::look_at(Point3::new(position.x, position.y, 1.0+position.z),
+                    Matrix4::from_angle_x(rotation.x) * Matrix4::from_angle_y(rotation.y) *
+                    Matrix4::look_at(Point3::new(position.x, position.y, -1.0+position.z),
                                                 position, Vector3::new(0.0, -1.0, 0.0));
                 let mut world = Matrix4::identity();
 
