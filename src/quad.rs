@@ -1,5 +1,5 @@
 // each `u32` values correspond to each image index stored in buffer
-pub struct Cube {
+pub struct Quad {
     top: u32,
     bottom: u32,
     left: u32,
@@ -8,7 +8,7 @@ pub struct Cube {
     back: u32,
 }
 
-impl Cube {
+impl Quad {
     // returns the vectors for the cube
     fn vec_data() {
 
