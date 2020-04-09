@@ -31,8 +31,6 @@ impl TextureAtlas {
             image_data.iter().cloned(), dimensions, Format::R8G8B8A8Unorm, queue.clone()
             ).unwrap();
 
-        println!("{:?}", texture);
-
         TextureAtlas {
             texture: texture,
             future: tex_future,

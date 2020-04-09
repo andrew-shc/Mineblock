@@ -38,13 +38,13 @@ use vulkano::descriptor::descriptor_set::DescriptorSetDesc;
 use winit::dpi::{LogicalPosition, PhysicalPosition};
 
 
-use crate::cube::Cube;
+use crate::mesh::Cube;
 use crate::mesh::Renderable;
+use crate::mesh::CubeFace;
 
 mod mesh;
 mod renderer;
 mod texture;
-mod cube;
 
 
 fn main() {
@@ -90,13 +90,28 @@ fn main() {
 
     let matrix_buffer = CpuBufferPool::uniform_buffer(device.clone());
 
-    let txtr = texture::TextureAtlas::load(queue.clone(), include_bytes!("../resource/texture1.png").to_vec(), 16);
+    let txtr = texture::TextureAtlas::load(queue.clone(), include_bytes!("../resource/texture/texture1.png").to_vec(), 16);
     let texture = txtr.texture.clone();
 
-    let cube = Cube::new([0,1], [1,1], [2,1], [3,1], [4,1], [5,1]);
+    let dirt = Cube::new_all([2, 0]);
+    let grass = Cube::new_single([2,0], [0, 0], CubeFace::TOP);
 
-    let vtx = cube.vert_data(&txtr, [0.0, 0.0, 0.0]);
-    let ind = cube.ind_data();
+    let mut vtx = Vec::new();
+    let mut ind = Vec::new();
+
+    for x in 0..16 {
+        for y in 0..16 {
+            for z in 0..16 {
+                if y < 62 {
+                    vtx.append(&mut dirt.vert_data(&txtr, [x as f32, y as f32, z as f32]));
+                    ind.append(&mut dirt.ind_data(x*16*16+y*16+z));
+                } else {
+                    vtx.append(&mut grass.vert_data(&txtr, [x as f32, y as f32, z as f32]));
+                    ind.append(&mut grass.ind_data(x*16*16+y*16+z));
+                }
+            }
+        }
+    }
 
     let vertex_buffer = CpuAccessibleBuffer::from_iter(device.clone(),
                                                        BufferUsage::all(), false, vtx.into_iter()).unwrap();
@@ -130,8 +145,8 @@ fn main() {
                                MipmapMode::Nearest, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat,
                                SamplerAddressMode::Repeat, 0.0, 1.0, 0.0, 0.0).unwrap();
 
-    let vs = vs::Shader::load(device.clone()).expect("failed to create shader module");
-    let fs = fs::Shader::load(device.clone()).expect("failed to create shader module");
+    let vs = vs::Shader::load(device.clone()).expect("failed to create shaders module");
+    let fs = fs::Shader::load(device.clone()).expect("failed to create shaders module");
 
     let (mut pipeline, mut framebuffer) = frames(device.clone(), &vs, &fs, &images, render_pass.clone());
 
@@ -240,7 +255,7 @@ fn main() {
                     recreate_swapchain = false;
                 }
 
-                let mut proj = perspective (Rad::from(Deg(60.0)), dimensions[0] as f32/dimensions[1] as f32, 0.1 , 1000.0);
+                let proj = perspective (Rad::from(Deg(60.0)), dimensions[0] as f32/dimensions[1] as f32, 0.001 , 1000.0);
                 let mut view = Matrix4::from_angle_x(rotation.x) * Matrix4::from_angle_y(rotation.y) *
                     Matrix4::look_at(Point3::new(position.x, position.y, -1.0+position.z), position, Vector3::new(0.0, -1.0, 0.0));
                 let mut world = Matrix4::identity();
@@ -345,5 +360,5 @@ fn frames(device: Arc<Device>,
     )
 }
 
-mod vs { vulkano_shaders::shader!{ty: "vertex", path: "src/cube.vert",} }
-mod fs { vulkano_shaders::shader!{ty: "fragment", path: "src/cube.frag",} }
+mod vs { vulkano_shaders::shader!{ty: "vertex", path: "resource/shaders/cube.vert",} }
+mod fs { vulkano_shaders::shader!{ty: "fragment", path: "resource/shaders/cube.frag",} }
