@@ -1,12 +1,12 @@
 use vulkano;
 
 #[derive(Default, Copy, Clone)]
-pub struct Vertex {
+pub struct CubeVtx {
     pub position: [f32; 3],
     pub txtr_crd: [f32; 2],
 }
 
-vulkano::impl_vertex!(Vertex, position, txtr_crd);
+vulkano::impl_vertex!(CubeVtx, position, txtr_crd);
 
 
 /*

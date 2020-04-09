@@ -1,14 +1,8 @@
+use crate::texture::TextureAtlas;
+
 pub trait Renderable {
-    fn vert_data<T>() -> Vec<T>;  // returns the vertex data
-    fn ind_data() -> Vec<u32>;  // returns the index data
-}
+    type Vertex;
 
-
-pub trait Quad {
-    fn volume() -> i32;
-}
-
-impl Renderable for Quad {
-    fn vert_data<T>() -> Vec<T>;  // returns the vertex data
-    fn ind_data() -> Vec<u32>;  // returns the index data
+    fn vert_data(&self, texture: &TextureAtlas, position: [f32; 3]) -> Vec<Self::Vertex>;  // returns the vertex data
+    fn ind_data(&self) -> Vec<u32>;  // returns the index data
 }

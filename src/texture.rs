@@ -8,7 +8,6 @@ use std::io::Cursor;
 use std::sync::Arc;
 use vulkano::descriptor::descriptor::DescriptorDescSupersetError::DimensionsMismatch;
 use std::ops::Mul;
-// USE TEXTURE ATLAS
 
 
 pub struct TextureAtlas {
@@ -29,8 +28,10 @@ impl TextureAtlas {
         reader.next_frame(&mut image_data).unwrap();
 
         let (texture, tex_future) = ImmutableImage::from_iter(
-            image_data.iter().cloned(), dimensions, Format::R8G8B8A8Srgb, queue.clone()
+            image_data.iter().cloned(), dimensions, Format::R8G8B8A8Unorm, queue.clone()
             ).unwrap();
+
+        println!("{:?}", texture);
 
         TextureAtlas {
             texture: texture,
@@ -41,12 +42,10 @@ impl TextureAtlas {
     }
 
     pub fn texture_coord(&self, x: u16, y: u16) -> [[f32; 2]; 4] {
-        let x_norm_start = ((x*self.quad_size)/self.dimensions.width() as u16) as f32;
-        let y_norm_start = ((y*self.quad_size) /self.dimensions.height() as u16) as f32;
-        let x_norm_end = ((x*self.quad_size)/self.dimensions.width() as u16) as f32;
-        let y_norm_end = ((y*self.quad_size)/self.dimensions.height() as u16) as f32;
-
-        println!("{}", x_norm_start);
+        let x_norm_start = (x*self.quad_size) as f32/self.dimensions.width() as f32;
+        let y_norm_start = (y*self.quad_size) as f32/self.dimensions.height() as f32;
+        let x_norm_end = ((x+1)*self.quad_size) as f32/self.dimensions.width() as f32;
+        let y_norm_end = ((y+1)*self.quad_size) as f32/self.dimensions.height() as f32;
 
         [[x_norm_start, y_norm_start], [x_norm_end, y_norm_start], [x_norm_end, y_norm_end], [x_norm_start, y_norm_end]]
     }

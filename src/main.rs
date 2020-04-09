@@ -37,8 +37,14 @@ use vulkano::buffer::CpuBufferPool;
 use vulkano::descriptor::descriptor_set::DescriptorSetDesc;
 use winit::dpi::{LogicalPosition, PhysicalPosition};
 
+
+use crate::cube::Cube;
+use crate::mesh::Renderable;
+
+mod mesh;
 mod renderer;
 mod texture;
+mod cube;
 
 
 fn main() {
@@ -84,50 +90,19 @@ fn main() {
 
     let matrix_buffer = CpuBufferPool::uniform_buffer(device.clone());
 
-    let vertex = vec![
-        renderer::Vertex { position: [0.0,0.0,0.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [1.0,0.0,0.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [1.0,1.0,0.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [0.0,1.0,0.0], txtr_crd: [0.0, 1.0], },
+    let txtr = texture::TextureAtlas::load(queue.clone(), include_bytes!("../resource/texture1.png").to_vec(), 16);
+    let texture = txtr.texture.clone();
 
-        renderer::Vertex { position: [0.0,0.0,1.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [1.0,0.0,1.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [1.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [0.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
+    let cube = Cube::new([0,1], [1,1], [2,1], [3,1], [4,1], [5,1]);
 
-        renderer::Vertex { position: [0.0,0.0,0.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [1.0,0.0,0.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [1.0,0.0,1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [0.0,0.0,1.0], txtr_crd: [1.0, 1.0], },
-
-        renderer::Vertex { position: [0.0,1.0,0.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [1.0,1.0,0.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [1.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [0.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
-
-        renderer::Vertex { position: [0.0,0.0,0.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [0.0,1.0,0.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [0.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [0.0,0.0,1.0], txtr_crd: [1.0, 1.0], },
-
-        renderer::Vertex { position: [1.0,0.0,0.0], txtr_crd: [0.0, 0.0], },
-        renderer::Vertex { position: [1.0,1.0,0.0], txtr_crd: [1.0, 0.0], },
-        renderer::Vertex { position: [1.0,1.0,1.0], txtr_crd: [1.0, 1.0], },
-        renderer::Vertex { position: [1.0,0.0,1.0], txtr_crd: [1.0, 1.0], },
-    ];
-
-    let index: Vec<u16> = vec![ 0, 1, 2, 0, 2, 3,
-                                4, 5, 6, 4, 6, 7,
-                                8, 9,10, 8,10,11,
-                               12,13,14,12,14,15,
-                               16,17,18,16,18,19,
-                               20,21,22,20,22,23,];
+    let vtx = cube.vert_data(&txtr, [0.0, 0.0, 0.0]);
+    let ind = cube.ind_data();
 
     let vertex_buffer = CpuAccessibleBuffer::from_iter(device.clone(),
-                                                       BufferUsage::all(), false, vertex.into_iter()).unwrap();
+                                                       BufferUsage::all(), false, vtx.into_iter()).unwrap();
 
     let index_buffer = CpuAccessibleBuffer::from_iter(device.clone(),
-                                                       BufferUsage::all(), false, index.into_iter()).unwrap();
+                                                       BufferUsage::all(), false, ind.into_iter()).unwrap();
 
     let render_pass = Arc::new(vulkano::single_pass_renderpass!(device.clone(),
         attachments: {
@@ -150,36 +125,6 @@ fn main() {
         }
     ).unwrap());
 
-    let mut dynamic_state = DynamicState {
-        viewports: Some(vec![Viewport {
-            origin: [0.0, 0.0],
-            dimensions: [swapchain.dimensions()[0] as f32, swapchain.dimensions()[1] as f32],
-            depth_range: 0.0 .. 1.0
-        }]),
-        .. DynamicState::none()
-    };
-
-    let (texture, tex_future) = {
-        let png_bytes = include_bytes!("../resource/stone.png").to_vec();
-        let cursor = Cursor::new(png_bytes);
-        let decoder = png::Decoder::new(cursor);
-        let (info, mut reader) = decoder.read_info().unwrap();
-        let dimensions = Dimensions::Dim2d { width: info.width, height: info.height };
-        let mut image_data = Vec::new();
-        image_data.resize((info.width * info.height * 4) as usize, 0);
-        reader.next_frame(&mut image_data).unwrap();
-
-        ImmutableImage::from_iter(
-            image_data.iter().cloned(),
-            dimensions,
-            Format::R8G8B8A8Srgb,
-            queue.clone()
-        ).unwrap()
-    };
-
-    // let txtr = texture::TextureAtlas::load(queue.clone(), include_bytes!("../resource/stone.png").to_vec(), 16);
-    // let useless = txtr.texture_coord(1, 0);
-
     // Filter::Nearest for rendering each pixel instead of "smudging" between the adjacent pixels
     let sampler = Sampler::new(device.clone(), Filter::Nearest, Filter::Nearest,
                                MipmapMode::Nearest, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat,
@@ -188,14 +133,14 @@ fn main() {
     let vs = vs::Shader::load(device.clone()).expect("failed to create shader module");
     let fs = fs::Shader::load(device.clone()).expect("failed to create shader module");
 
-    let (mut pipeline, mut framebuffer) = frames(device.clone(), &vs, &fs, &images, render_pass.clone(), &mut dynamic_state);
+    let (mut pipeline, mut framebuffer) = frames(device.clone(), &vs, &fs, &images, render_pass.clone());
 
     // let tex_future = txtr.future;
     // let texture = txtr.texture;
 
     // tex_future.flush();
 
-    let mut previous_frame_end = Some(Box::new(sync::now(device.clone())) as Box<dyn GpuFuture>);  // store previous submission of frame
+    let mut previous_frame_end = Some(Box::new(sync::now(device.clone()).join(txtr.future)) as Box<dyn GpuFuture>);  // store previous submission of frame
     // previous_frame_end.take().unwrap().join(txtr.future);
 
     let mut recreate_swapchain = false;  // recreating the swapchain if the swapchain's screen was changed
@@ -257,11 +202,9 @@ fn main() {
                 rotation.x -= Deg(delta.1 as f32/10.0);
                 rotation.y += Deg(delta.0 as f32/10.0);
 
-                // surface.window().set_cursor_position(
-                //                 //     Position::Physical(PhysicalPosition{ x: dimensions[0] as i32/2, y: dimensions[1] as i32/2 })
-                //                 // );
-
-                // Position::Logical(LogicalPosition{ x: dimensions[0] as f64/2.0, y: dimensions[1] as f64/2.0 })
+                surface.window().set_cursor_position(
+                    Position::Physical(PhysicalPosition{ x: dimensions[0] as i32/2, y: dimensions[1] as i32/2 })
+                );
             },
             // this calls last after all the event finishes emitting
             // and only calls once, which is great for updating mutable variables since it'll be uniform
@@ -278,38 +221,28 @@ fn main() {
                 // cleans the buffer
                 previous_frame_end.as_mut().unwrap().cleanup_finished();
 
-                let txtr = texture::TextureAtlas::load(queue.clone(), include_bytes!("../resource/stone.png").to_vec(), 16);
-
                 if recreate_swapchain {
                     let dimensions: [u32; 2] = surface.window().inner_size().into();
                     let (new_swapchain, new_images) = match swapchain.recreate_with_dimensions(dimensions) {
-                        Ok(r) => {
-                            println!("FFFF");
-                            r
-                        },
+                        Ok(r) => r,
                         // This error tends to happen when the user is manually resizing the window.
                         // Simply restarting the loop is the easiest way to fix this issue.
-                        Err(SwapchainCreationError::UnsupportedDimensions) => {
-                            println!("C");
-                            return
-                        },
+                        Err(SwapchainCreationError::UnsupportedDimensions) => return,
                         Err(e) => panic!("Failed to recreate swapchain: {:?}", e)
                     };
                     swapchain = new_swapchain;
 
                     // recreate the framebuffer after recreating swapchain
-                    let (new_pipeline, new_framebuffer) = frames(device.clone(), &vs, &fs, &new_images, render_pass.clone(), &mut dynamic_state);
+                    let (new_pipeline, new_framebuffer) = frames(device.clone(), &vs, &fs, &new_images, render_pass.clone());
                     pipeline = new_pipeline;
                     framebuffer = new_framebuffer;
 
                     recreate_swapchain = false;
                 }
 
-                let mut proj = perspective (Rad::from(Deg(60.0)), dimensions[0] as f32/dimensions[1] as f32, 0.2 , 1000.0);
-                let mut view =
-                    Matrix4::from_angle_x(rotation.x) * Matrix4::from_angle_y(rotation.y) *
-                    Matrix4::look_at(Point3::new(position.x, position.y, -1.0+position.z),
-                                                position, Vector3::new(0.0, -1.0, 0.0));
+                let mut proj = perspective (Rad::from(Deg(60.0)), dimensions[0] as f32/dimensions[1] as f32, 0.1 , 1000.0);
+                let mut view = Matrix4::from_angle_x(rotation.x) * Matrix4::from_angle_y(rotation.y) *
+                    Matrix4::look_at(Point3::new(position.x, position.y, -1.0+position.z), position, Vector3::new(0.0, -1.0, 0.0));
                 let mut world = Matrix4::identity();
 
                 let sub_buf = matrix_buffer.next(
@@ -318,7 +251,7 @@ fn main() {
 
                 let layout0 = pipeline.descriptor_set_layout(0).unwrap();
                 let set0 = Arc::new(PersistentDescriptorSet::start(layout0.clone())
-                    .add_sampled_image(txtr.texture.clone(), sampler.clone()).unwrap()
+                    .add_sampled_image(texture.clone(), sampler.clone()).unwrap()
                     .build().unwrap()
                 );
 
@@ -328,22 +261,16 @@ fn main() {
                     .build().unwrap()
                 );
 
-                // println!("{} {}", set.num_bindings(), mset.num_bindings());
-
                 let (image_num, suboptimal, acquire_future) = match swapchain::acquire_next_image(swapchain.clone(), None) {
                     Ok(r) => r,
                     Err(AcquireError::OutOfDate) => {
-                        println!("RECREATE!");
                         recreate_swapchain = true;
                         return;
                     },
                     Err(e) => panic!("Failed to acquire next image: {:?}", e)
                 };
 
-                // let present_future = swapchain::present(swapchain.clone(), previous_frame_end.take().unwrap(), queue.clone(), image_num);
-
                 if suboptimal {
-                    println!("====================");
                     recreate_swapchain = true;
                 }
 
@@ -353,25 +280,19 @@ fn main() {
                     .end_render_pass().unwrap()
                     .build().unwrap();
 
-                println!("OA");
                 let future = previous_frame_end.take().unwrap()
-                    .join(txtr.future)
                     .join(acquire_future)
                     // .join(present_future)
                     .then_execute(queue.clone(), command_buffer).expect("LA")
                     // submits present command to the GPU to the end of queue
                     .then_swapchain_present(queue.clone(), swapchain.clone(), image_num)
                     .then_signal_fence_and_flush();
-                println!("OB");
 
-                println!("-");
                 match future {
                     Ok(future) => {
-                        println!("A");
                         previous_frame_end = Some(Box::new(future) as Box<_>);
                     },
                     Err(FlushError::OutOfDate) => {
-                        println!("B");
                         recreate_swapchain = true;
                         previous_frame_end = Some(Box::new(sync::now(device.clone())) as Box<_>);
                     }
@@ -390,8 +311,7 @@ fn frames(device: Arc<Device>,
           vs: &vs::Shader,
           fs: &fs::Shader,
           images: &Vec<Arc<SwapchainImage<Window>>>,
-          render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-          dynamic_state: &mut DynamicState
+          render_pass: Arc<dyn RenderPassAbstract + Send + Sync>
 ) -> (Arc<dyn GraphicsPipelineAbstract + Send + Sync>, Vec<Arc<dyn FramebufferAbstract + Send + Sync>>) {
     let dimensions = images[0].dimensions();
 
@@ -399,7 +319,7 @@ fn frames(device: Arc<Device>,
 
     (
         Arc::new(GraphicsPipeline::start()
-            .vertex_input_single_buffer::<renderer::Vertex>()
+            .vertex_input_single_buffer::<renderer::CubeVtx>()
             .vertex_shader(vs.main_entry_point(), ())
             .triangle_list()
             .viewports_dynamic_scissors_irrelevant(1)
@@ -409,6 +329,7 @@ fn frames(device: Arc<Device>,
                 depth_range: 0.0 .. 1.0,
             }))
             .fragment_shader(fs.main_entry_point(), ())
+            .alpha_to_coverage_enabled()
             .depth_stencil_simple_depth()
             .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
             .build(device.clone()).unwrap())
