@@ -28,7 +28,7 @@ pub trait Mesh {
                 render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
                 images: &Vec<Arc<SwapchainImage<Window>>>)
         -> Arc<dyn GraphicsPipelineAbstract + Send + Sync>;  // returns the graphic pipeline of that mesh
-    fn update_vert(&mut self, txtr_coord: &Vec<[u16; 2]>, position: [f32; 3]);  // updates the vertex data
+    fn update_vert(&mut self, txtr_coord: &Vec<[u16; 2]>, position: [f32; 3], start: [f32; 3], end: [f32; 3]);  // updates the vertex data
     fn update_ind(&mut self, index: u32);  // updates the index data
 }
 
@@ -118,7 +118,7 @@ impl Mesh for Cube {
             .build(device.clone()).unwrap())
     }
 
-    fn update_vert(&mut self, txtr_coord: &Vec<[u16; 2]>, position: [f32; 3]) {
+    fn update_vert(&mut self, txtr_coord: &Vec<[u16; 2]>, position: [f32; 3], start: [f32; 3], end: [f32; 3]) {
         let top = self.texture.texture_coord(txtr_coord[0][0],txtr_coord[0][1]);
         let bottom = self.texture.texture_coord(txtr_coord[1][0],txtr_coord[1][1]);
         let left = self.texture.texture_coord(txtr_coord[2][0],txtr_coord[2][1]);
@@ -126,50 +126,98 @@ impl Mesh for Cube {
         let front = self.texture.texture_coord(txtr_coord[4][0],txtr_coord[4][1]);
         let back = self.texture.texture_coord(txtr_coord[5][0],txtr_coord[5][1]);
 
-        self.vertex.append(
-            &mut vec![
-                Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: front[0], },
-                Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: front[1], },
-                Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: front[2], },
-                Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: front[3], },
+        let end = [end[0]-1.0, end[1]-1.0, end[2]-1.0];
 
-                Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: back[2], },
-                Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: back[3], },
-                Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: back[0], },
-                Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: back[1], },
+        // println!("{:?}", self.vertex);
 
-                Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: bottom[0], },
-                Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: bottom[1], },
-                Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: bottom[2], },
-                Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: bottom[3], },
+        if start[0] == position[0] {
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: left[3], });
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: left[0], });
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: left[1], });
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: left[2], });
+        }
 
-                Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: top[0], },
-                Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: top[1], },
-                Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: top[2], },
-                Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: top[3], },
+        if start[1] == position[1] {
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: bottom[0], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: bottom[1], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: bottom[2], });
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: bottom[3], });
+        }
 
-                Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: left[3], },
-                Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: left[0], },
-                Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: left[1], },
-                Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: left[2], },
+        if start[2] == position[2] {
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: front[0], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: front[1], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: front[2], });
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: front[3], });
+        }
 
-                Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: right[3], },
-                Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: right[0], },
-                Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: right[1], },
-                Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: right[2], },
-            ]
-        );
+        if end[0] == position[0] {
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: right[3], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: right[0], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: right[1], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: right[2], });
+        }
+
+        if end[1] == position[1] {
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: top[0], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: top[1], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: top[2], });
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: top[3], });
+        }
+
+        if end[2] == position[2] {
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: back[2], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: back[3], });
+            self.vertex.push(Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: back[0], });
+            self.vertex.push(Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: back[1], });
+        }
+
+        // self.vertex.append(
+        //     &mut vec![
+        //         Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: front[0], },
+        //         Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: front[1], },
+        //         Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: front[2], },
+        //         Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: front[3], },
+        //
+        //         Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: back[2], },
+        //         Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: back[3], },
+        //         Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: back[0], },
+        //         Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: back[1], },
+        //
+        //         Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: bottom[0], },
+        //         Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: bottom[1], },
+        //         Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: bottom[2], },
+        //         Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: bottom[3], },
+        //
+        //         Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: top[0], },
+        //         Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: top[1], },
+        //         Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: top[2], },
+        //         Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: top[3], },
+        //
+        //         Self::Vertex { position: [0.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: left[3], },
+        //         Self::Vertex { position: [0.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: left[0], },
+        //         Self::Vertex { position: [0.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: left[1], },
+        //         Self::Vertex { position: [0.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: left[2], },
+        //
+        //         Self::Vertex { position: [1.0+position[0],0.0+position[1],0.0+position[2]], txtr_crd: right[3], },
+        //         Self::Vertex { position: [1.0+position[0],1.0+position[1],0.0+position[2]], txtr_crd: right[0], },
+        //         Self::Vertex { position: [1.0+position[0],1.0+position[1],1.0+position[2]], txtr_crd: right[1], },
+        //         Self::Vertex { position: [1.0+position[0],0.0+position[1],1.0+position[2]], txtr_crd: right[2], },
+        //     ]
+        // );
     }
 
     // index refers to the overall polygon
     fn update_ind(&mut self, index: u32) {
+        // println!("#> {:?}", self.index);
         self.index.append(
-            &mut vec![  0, 1, 2, 0, 2, 3,
-                   4, 5, 6, 4, 6, 7,
-                   8, 9,10, 8,10,11,
-                   12,13,14,12,14,15,
-                   16,17,18,16,18,19,
-                   20,21,22,20,22,23,].iter().map(|&x| x+(index*6*4)).collect()
+            &mut vec![
+                 0, 1, 2, 0, 2, 3,
+                 4, 5, 6, 4, 6, 7,
+                 8, 9,10, 8,10,11,
+                12,13,14,12,14,15,
+                16,17,18,16,18,19,
+                20,21,22,20,22,23,].iter().map(|&x| x+(index*6*4)).collect()
         )
     }
 }

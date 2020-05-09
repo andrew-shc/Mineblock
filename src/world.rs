@@ -39,7 +39,7 @@ pub struct World {
 impl World {
     // create a new world
     pub fn new(name: String, device: Arc<Device>, queue: Arc<Queue>) -> (Self, CommandBufferExecFuture<NowFuture, AutoCommandBuffer>) {
-        let (txtr, future) = TextureAtlas::load(queue.clone(), include_bytes!("../resource/texture/texture1.png").to_vec(), 16);
+        let (txtr, future) = TextureAtlas::load(queue.clone(), include_bytes!("../resource/texture/texture2.png").to_vec(), 16);
         let cube_mesh = Rc::new(RefCell::new(Cube::new(device.clone(), txtr)));
         // cube_mesh.borrow_mut().update_vert()
 
@@ -75,12 +75,12 @@ impl World {
         for x in 0..world_size {
             for y in 0..world_size {
                 for z in 0..world_size {
-                    if y < world_size-1-1 {
+                    if y < world_size-1 {
                         dirt.create(x*world_size*world_size+y*world_size+z,
-                                    [x as f32, y as f32, z as f32]);
+                                    [x as f32, y as f32, z as f32], vec![], [0.0, 0.0, 0.0], [world_size as f32, world_size as f32, world_size as f32]);
                     } else {
                         grass.create(x*world_size*world_size+y*world_size+z,
-                                    [x as f32, y as f32, z as f32]);
+                                    [x as f32, y as f32, z as f32], vec![], [0.0, 0.0, 0.0], [world_size as f32, world_size as f32, world_size as f32]);
                     }
                 }
             }

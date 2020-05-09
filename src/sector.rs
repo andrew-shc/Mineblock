@@ -23,6 +23,10 @@ impl Sector {
 
     // create chunks
     pub fn create(&mut self) {
-        self.chunks.push(Chunk::new());
+        // self.chunks.push(Chunk::new());
+    }
+
+    pub fn update() {
+
     }
 }

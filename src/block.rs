@@ -1,4 +1,5 @@
 use crate::mesh::Mesh;
+use crate::mesh::CubeFace;
 
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -19,8 +20,8 @@ impl<V: 'static> Block<V> {
     }
 
     // creates the new block in the world
-    pub fn create(&mut self, index: u32, position: [f32; 3]) {
-        self.mesh.borrow_mut().update_vert(&self.texture, position);
+    pub fn create(&mut self, index: u32, position: [f32; 3], faces: Vec<CubeFace>, start: [f32; 3], end: [f32; 3]) {
+        self.mesh.borrow_mut().update_vert(&self.texture, position, start, end);
         self.mesh.borrow_mut().update_ind(index);
     }
 }
