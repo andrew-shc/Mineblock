@@ -1,28 +1,52 @@
-use crate::mesh::Mesh;
-use crate::mesh::CubeFace;
-
+use crate::mesh::cube::CubeFace;
+use crate::mesh::mesh::MeshType;
+use std::fmt::{Debug, Formatter};
+use std::fmt;
 use std::rc::Rc;
-use std::cell::RefCell;
+use crate::texture::TextureAtlas;
+
 // stores block info
 // TODO: dynamic texture will be called through the Block class
 
-pub struct Block<V>{
-    mesh: Rc<RefCell<dyn Mesh<Vertex=V>>>,  // the parent mesh
-    id: String,  // block id
-    texture: Vec<[u16; 2]>,  // texture info
-    state: u8,  // block state info TODO
+#[derive(Clone)]
+pub struct Block {
+    // Rc<RefCell<dyn Mesh<Vertex=V>>>
+    pub mesh: MeshType,  // the parent mesh
+    pub id: &'static str,  // block id
+    pub texture: &'static [[u16; 2]],  // texture info
+    pub texture_coord: Vec<[[f32; 2]; 4]>,  // texture coordinate info
+    pub state: u8,  // block state info TODO
 }
 
-impl<V: 'static> Block<V> {
+impl Block {
     // instantiate a new block
-    pub fn new(mesh: Rc<RefCell<dyn Mesh<Vertex=V>>>, id: String, texture: Vec<[u16; 2]>, state: u8) -> Self {
-        Self { mesh, id, texture, state }
+    pub fn new(mesh: MeshType, txtr: Rc<TextureAtlas>, id: &'static str, texture: &'static [[u16; 2]], state: u8) -> Self {
+        let top = txtr.texture_coord( texture[0][0], texture[0][1]);
+        let bottom = txtr.texture_coord( texture[1][0], texture[1][1]);
+        let left = txtr.texture_coord( texture[2][0], texture[2][1]);
+        let right = txtr.texture_coord( texture[3][0], texture[3][1]);
+        let front = txtr.texture_coord( texture[4][0], texture[4][1]);
+        let back = txtr.texture_coord( texture[5][0], texture[5][1]);
+
+        Self { mesh, id, texture, state, texture_coord: vec![top, bottom, left, right, front, back] }
     }
 
-    // creates the new block in the world
-    pub fn create(&mut self, index: u32, position: [f32; 3], faces: Vec<CubeFace>, start: [f32; 3], end: [f32; 3]) {
-        self.mesh.borrow_mut().update_vert(&self.texture, position, start, end);
-        self.mesh.borrow_mut().update_ind(index);
+    // // creates the new block in the world
+    // pub fn create(&mut self, index: u32, position: [f32; 3], faces: Vec<CubeFace>, start: [f32; 3], end: [f32; 3]) {
+    //     self.mesh.borrow_mut().onload_vert(&self.texture, position, start, end);
+    //     self.mesh.borrow_mut().onload_ind(index);
+    // }
+}
+
+impl Debug for Block {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Block")
+            .field("mesh", match &self.mesh {
+                MeshType::Cube => &"Cube",
+                MeshType::Flora => &"Flora",
+            })
+            .field("id", &self.id)
+            .finish()
     }
 }
 
@@ -36,3 +60,4 @@ Block {
 }
 
 */
+

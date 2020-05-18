@@ -1,3 +1,5 @@
+use crate::mesh::cube::vs;
+
 use vulkano::buffer::{CpuBufferPool};
 use vulkano::device::Device;
 use cgmath::prelude::*;
@@ -5,8 +7,6 @@ use cgmath::{Matrix4, Vector3, Point3, Euler, Deg, Rad};
 use cgmath::perspective;
 use std::sync::Arc;
 use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
-
-use crate::mesh::vs;
 use vulkano::memory::pool::StdMemoryPool;
 
 pub struct Camera<T> {

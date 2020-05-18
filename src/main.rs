@@ -1,20 +1,15 @@
 use vulkano::{
     instance::{Instance, PhysicalDevice},
     device::{Device},
-    image::{swapchain::SwapchainImage, attachment::AttachmentImage},
-    format::{Format},
-    framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract},
-    swapchain,
 };
 
-use std::sync::Arc;
 
 use vulkano_win::VkSurfaceBuild;
 use winit::event_loop::EventLoop;
-use winit::window::{Window, WindowBuilder};
+use winit::window::WindowBuilder;
 use winit::dpi::{PhysicalPosition};
 
-use cgmath::{Point3, Deg, Rad, Euler, Angle};
+use cgmath::{Deg, Rad, Euler, Angle};
 
 
 use crate::renderer::Render;
@@ -27,9 +22,11 @@ mod world;
 mod block;
 mod camera;
 mod sector;
+mod terrain;
 
 
 fn main() {
+    println!("PROGRAM - BEGIN INITIALIZATION");
     let mut maximized = false;
 
     // setup
@@ -55,6 +52,8 @@ fn main() {
     };
     let queue = queues.next().unwrap();
 
+    println!("PROGRAM - BEGIN MAIN PROGRAM");
+
     use winit::event_loop::ControlFlow;
     use winit::event::{Event, WindowEvent, DeviceEvent, VirtualKeyCode as K, KeyboardInput, ElementState};
     use winit::dpi::Position;
@@ -66,8 +65,9 @@ fn main() {
 
     let mut render = Render::new(physical.clone(), device.clone(),queue.clone(), surface.clone());
 
+    println!("PROGRAM - START MAIN LOOP");
+
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
         let dimensions: [u32; 2] = surface.window().inner_size().into();
 
         match event {
@@ -116,17 +116,19 @@ fn main() {
 
                 surface.window().set_cursor_position(
                     Position::Physical(PhysicalPosition{ x: dimensions[0] as i32/2, y: dimensions[1] as i32/2 })
-                );
+                ).unwrap();
             },
             // this calls last after all the event finishes emitting
             // and only calls once, which is great for updating mutable variables since it'll be uniform
             Event::MainEventsCleared => {
+
                 if pressed.contains(&K::A) {render.cam.translate(-Rad(rotation.y).0.cos(), 0.0, Rad(rotation.y).0.sin())}
                 if pressed.contains(&K::D) {render.cam.translate(Rad(rotation.y).0.cos(), 0.0, -Rad(rotation.y).0.sin())}
                 if pressed.contains(&K::W) {render.cam.translate(Rad(rotation.y).0.sin(), 0.0, Rad(rotation.y).0.cos())}
                 if pressed.contains(&K::S) {render.cam.translate(-Rad(rotation.y).0.sin(),0.0, -Rad(rotation.y).0.cos())}
                 if pressed.contains(&K::LShift) {render.cam.translate(0.0, -1.0, 0.0)}
                 if pressed.contains(&K::Space)  {render.cam.translate(0.0, 1.0, 0.0)}
+
             },
             Event::RedrawEventsCleared => {
                 render.update(device.clone(), queue.clone(), dimensions);

@@ -5,6 +5,7 @@ use vulkano::format::Format;
 use vulkano::device::Queue;
 
 use std::io::Cursor;
+use std::rc::Rc;
 use std::sync::Arc;
 
 
@@ -15,7 +16,7 @@ pub struct TextureAtlas {
 }
 
 impl TextureAtlas {
-    pub fn load(queue: Arc<Queue>, img_bytes: Vec<u8>, quad_size: u16) -> (TextureAtlas, CommandBufferExecFuture<NowFuture, AutoCommandBuffer>) {
+    pub fn load(queue: Arc<Queue>, img_bytes: Vec<u8>, quad_size: u16) -> (Rc<TextureAtlas>, CommandBufferExecFuture<NowFuture, AutoCommandBuffer>) {
         let cursor = Cursor::new(img_bytes);
         let decoder = png::Decoder::new(cursor);
         let (info, mut reader) = decoder.read_info().unwrap();
@@ -28,11 +29,12 @@ impl TextureAtlas {
             image_data.iter().cloned(), dimensions, Format::R8G8B8A8Unorm, queue.clone()
             ).unwrap();
 
-        (TextureAtlas {
-            texture: texture,
-            quad_size: quad_size,
-            dimensions: dimensions,
-        },
+        (
+            Rc::new(TextureAtlas {
+                texture: texture,
+                quad_size: quad_size,
+                dimensions: dimensions,
+            }),
             tex_future
         )
     }
@@ -47,7 +49,7 @@ impl TextureAtlas {
     }
 }
 
-use crate::mesh::CubeFace;
+use crate::mesh::cube::CubeFace;
 
 trait Texture {
 

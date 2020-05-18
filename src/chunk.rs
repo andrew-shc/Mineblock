@@ -1,30 +1,64 @@
-use crate::mesh::Mesh;
+use crate::mesh::{
+    mesh::Mesh,
+    mesh::Meshes
+};
+use crate::block::Block;
+use crate::renderer;
+
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::cell::Cell;
+use std::borrow::{BorrowMut, Borrow};
+
+
+pub const CHUNK_SIZE: usize = 32;
 // a chunk is a size of 32x32x32 Blocks
 
+#[derive(Copy, Clone)]
+pub struct ChunkID(pub u16);  // Chunk ID on render data
+
 pub struct Chunk {
-    position: [u8; 3],  // position is relative towards to its parent sector; in chunks
-    size: u8,
-    mesh_ind: Vec<(u32, u32)>,
+    pub id: ChunkID,
+    pub visible: bool,
+    position: [u32; 3],  // position is relative towards to its parent sector; in chunks
+    block_data: Vec<Block>,
+
+    // TODO: From Sector (nothing)
+
+    // TODO: From World
+    // meshes: Vec<Cell<dyn Mesh>>,
 }
 
 impl Chunk {
-    pub fn new(position: [u8; 3]) -> Self {
+    pub fn from_sector() {
+        // return a new chunk from sector
+    }
+
+    pub fn new(id: ChunkID, position: [u32; 3], blocks: Vec<Block>) -> Self {
         Self {
+            id: id,
             position: position,
-            size: 1,
-            mesh_ind: Vec::new(),
+            visible: true,
+            block_data: blocks,
         }
     }
 
-    pub fn generate() {
+    pub fn render(&self, meshes: Rc<RefCell<Meshes>>) {
+        (*meshes).borrow_mut().onload_data(self.id, [self.position[0] as f32, self.position[1] as f32, self.position[2] as f32], &self.block_data);
+    }
+
+    fn regen(&mut self) {
 
     }
 
-    pub fn render() {
+    pub fn update(&mut self) {
+    }
+
+    pub fn save(&self) {
 
     }
 
-    pub fn update() {
+    pub fn load(&mut self) {
 
     }
 }

@@ -1,24 +1,34 @@
-use crate::mesh::MeshType;
+use crate::mesh::mesh::MeshType;
+use crate::world::World;
+use crate::mesh::cube::vs;
+use crate::camera::Camera;
+use crate::texture::TextureAtlas;
 
 use vulkano;
-use std::fmt;
-use std::sync::Arc;
 use vulkano::device::{Device, Queue};
 use vulkano::image::{AttachmentImage, SwapchainImage};
 use vulkano::framebuffer::{FramebufferAbstract, RenderPassAbstract};
 use vulkano::{sync, swapchain};
-use vulkano::sync::{GpuFuture, FlushError};
+use vulkano::sync::{GpuFuture, FlushError, NowFuture};
 use winit::window::Window;
 use vulkano::swapchain::{Swapchain, SurfaceTransform, ColorSpace, PresentMode, FullscreenExclusive, SwapchainCreationError, AcquireError, Surface};
-use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState};
-use crate::world::World;
-use crate::mesh::vs;
+use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState, CommandBufferExecFuture, AutoCommandBuffer};
 use vulkano::format::Format;
 use vulkano::framebuffer::Framebuffer;
-use crate::camera::Camera;
-use vulkano::buffer::CpuAccessibleBuffer;
+use vulkano::buffer::{CpuAccessibleBuffer, BufferUsage, TypedBufferAccess};
 use vulkano::instance::PhysicalDevice;
 use vulkano::pipeline::GraphicsPipelineAbstract;
+use vulkano::command_buffer::pool::standard::StandardCommandPoolAlloc;
+
+use std::fmt;
+use std::rc::Rc;
+use std::sync::Arc;
+use std::borrow::BorrowMut;
+use std::iter::FromIterator;
+use std::convert::TryInto;
+
+
+pub trait Vertex {}
 
 
 #[derive(Default, Copy, Clone)]
@@ -26,6 +36,8 @@ pub struct CubeVtx {
     pub position: [f32; 3],
     pub txtr_crd: [f32; 2],
 }
+
+impl Vertex for CubeVtx {}
 
 impl fmt::Debug for CubeVtx {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -46,11 +58,13 @@ pub struct Render {
     images: Vec<Arc<SwapchainImage<Window>>>,  // swapchain images
     framebuffer: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
     renderpass: Arc<dyn RenderPassAbstract + Send + Sync>,
-    pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
+    pipeline: Vec<Arc<dyn GraphicsPipelineAbstract + Send + Sync>>,
 
     recreate: bool, // recreate swapchain
     vertices: Arc<CpuAccessibleBuffer<[CubeVtx]>>,
     indices: Arc<CpuAccessibleBuffer<[u32]>>,
+
+    textures: Vec<(Rc<TextureAtlas> /* CommandBufferExecFuture<NowFuture, AutoCommandBuffer<StandardCommandPoolAlloc>> */)>,
 
     pub world: World,
     pub cam: Camera<vs::ty::Matrix>,
@@ -91,8 +105,13 @@ impl Render {
             }
         ).unwrap());
 
-        let (world, future) = World::new(String::from("World 0"), device.clone(), queue.clone());
-        let (vertex_buffer, index_buffer) = world.instantiate(device.clone());
+        let (txtr, future) = TextureAtlas::load(queue.clone(), include_bytes!("../resource/texture/texture2.png").to_vec(), 16);
+
+        let mut world = World::new(String::from("World 0"), device.clone(), queue.clone(), txtr.clone());
+        world.instantiate();
+
+        let mut mesh_data = world.mesh_datas(device.clone());
+        let (v, i) = mesh_data.pop().unwrap();
 
         Self {
             previous_frame: Some(Box::new(sync::now(device.clone()).join(future)) as Box<dyn GpuFuture>),
@@ -100,11 +119,15 @@ impl Render {
             images: images.clone(),
             framebuffer: Self::frames(device.clone(), &images, renderpass.clone()),
             renderpass: renderpass.clone(),
-            pipeline: world.render(device.clone(), renderpass.clone(), &images),
 
             recreate: false,
-            vertices: vertex_buffer,
-            indices: index_buffer,
+            pipeline: world.mesh_pipelines(device.clone(), renderpass.clone(), &images),
+            vertices: v,
+            indices: i,
+
+            textures: vec![
+                (txtr.clone()),
+            ],
 
             world: world,
             cam: Camera::new(device.clone(), 0.1, 0.125),
@@ -127,23 +150,13 @@ impl Render {
 
             // recreate the framebuffer after recreating swapchain
             self.framebuffer = Self::frames(device.clone(), &new_images, self.renderpass.clone());
-            self.pipeline = self.world.render(device.clone(), self.renderpass.clone(), &new_images);
+            self.pipeline = self.world.mesh_pipelines(device.clone(), self.renderpass.clone(), &self.images);
 
             self.recreate = false;
         }
 
-        // the closer the znear is to 0, the worse the depth buffering would perform
-        // let proj = perspective (Rad::from(Deg(60.0)), dimensions[0] as f32/dimensions[1] as f32, 0.1 , 1000.0);
-        // let mut view = Matrix4::from_angle_x(rotation.x) * Matrix4::from_angle_y(rotation.y) *
-        //     Matrix4::look_at(Point3::new(position.x, position.y, -1.0+position.z), position, Vector3::new(0.0, -1.0, 0.0));
-        // let mut world = Matrix4::identity();
-        //
-        // let sub_buf = matrix_buffer.next(
-        //     vs::ty::Matrix {proj: proj.into(), view: view.into(), world: world.into()}
-        // ).unwrap();
-
         let sub_buf = self.cam.mat_buf(dimensions);
-        let buffers = self.world.buffers(self.pipeline.clone(), &sub_buf);
+        let sets = self.world.cube_sets(self.pipeline[0].clone(), &sub_buf);
 
         let (image_num, suboptimal, acquire_future) = match swapchain::acquire_next_image(self.swapchain.clone(), None) {
             Ok(r) => r,
@@ -156,9 +169,11 @@ impl Render {
 
         if suboptimal { self.recreate = true; }
 
+        println!("Number of vertices rendering: {:?}", self.vertices.clone().len());
+
         let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(device.clone(), queue.family()).unwrap()
             .begin_render_pass(self.framebuffer[image_num].clone(), false, vec![[0.1, 0.3, 1.0, 1.0].into(), 1f32.into()]).unwrap()
-            .draw_indexed(self.pipeline.clone(), &DynamicState::none(), vec!(self.vertices.clone()), self.indices.clone(), buffers[0].clone(), ()).unwrap()
+            .draw_indexed(self.pipeline[0].clone(), &DynamicState::none(), vec!(self.vertices.clone()), self.indices.clone(), sets.clone(), ()).unwrap()
             .end_render_pass().unwrap()
             .build().unwrap();
 
@@ -168,6 +183,8 @@ impl Render {
             // submits present command to the GPU to the end of queue
             .then_swapchain_present(queue.clone(), self.swapchain.clone(), image_num)
             .then_signal_fence_and_flush();
+
+
 
         match future {
             Ok(fut) => {
