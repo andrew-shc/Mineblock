@@ -1,4 +1,3 @@
-use crate::renderer;
 use crate::renderer::CubeVtx;
 use crate::block::Block;
 use crate::chunk::{Chunk, ChunkID};

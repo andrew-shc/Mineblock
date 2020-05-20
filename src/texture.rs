@@ -51,37 +51,33 @@ impl TextureAtlas {
 
 use crate::mesh::cube::CubeFace;
 
-trait Texture {
-
-}
-
-struct CubeTexture {
-    // each integer values correspond to the location of the quad in the UV atlas
-    top: [u16; 2],
-    bottom: [u16; 2],
-    left: [u16; 2],
-    right: [u16; 2],
-    front: [u16; 2],
-    back: [u16; 2],
-}
-
-impl CubeTexture {
-    pub fn new(top: [u16; 2], bottom: [u16; 2], left: [u16; 2], right: [u16; 2], front: [u16; 2], back: [u16; 2]) -> Self {
-        Self { top, bottom, left, right, front, back }
-    }
-
-    pub fn new_all(coord: [u16; 2]) -> Self {
-        Self::new(coord, coord, coord, coord, coord, coord)
-    }
-
-    pub fn new_single(all: [u16; 2], unique: [u16; 2], face: CubeFace) -> Self {
-        Self::new(
-            if face == CubeFace::TOP {unique} else {all},
-            if face == CubeFace::BOTTOM {unique} else {all},
-            if face == CubeFace::LEFT {unique} else {all},
-            if face == CubeFace::RIGHT {unique} else {all},
-            if face == CubeFace::FRONT {unique} else {all},
-            if face == CubeFace::BACK {unique} else {all}
-        )
-    }
-}
+// struct CubeTexture {
+//     // each integer values correspond to the location of the quad in the UV atlas
+//     top: [u16; 2],
+//     bottom: [u16; 2],
+//     left: [u16; 2],
+//     right: [u16; 2],
+//     front: [u16; 2],
+//     back: [u16; 2],
+// }
+//
+// impl CubeTexture {
+//     pub fn new(top: [u16; 2], bottom: [u16; 2], left: [u16; 2], right: [u16; 2], front: [u16; 2], back: [u16; 2]) -> Self {
+//         Self { top, bottom, left, right, front, back }
+//     }
+//
+//     pub fn new_all(coord: [u16; 2]) -> Self {
+//         Self::new(coord, coord, coord, coord, coord, coord)
+//     }
+//
+//     pub fn new_single(all: [u16; 2], unique: [u16; 2], face: CubeFace) -> Self {
+//         Self::new(
+//             if face == CubeFace::TOP {unique} else {all},
+//             if face == CubeFace::BOTTOM {unique} else {all},
+//             if face == CubeFace::LEFT {unique} else {all},
+//             if face == CubeFace::RIGHT {unique} else {all},
+//             if face == CubeFace::FRONT {unique} else {all},
+//             if face == CubeFace::BACK {unique} else {all}
+//         )
+//     }
+// }

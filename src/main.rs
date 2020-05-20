@@ -59,9 +59,10 @@ fn main() {
     use winit::dpi::Position;
 
     let mut rotation = Euler::new(Deg(0.0 as f32), Deg(0.0), Deg(0.0));  // the rotation of the player's camera in Radian
-    let mut pressed: Vec<K> = Vec::new();
-
-    // let txtr = world0.cube_mesh.into_inner().texture.texture.clone();
+    let mut pressed: Vec<K> = Vec::new();  // keyboard pressed for player translation
+    let mut cmd_mode = false;  // command/chat mode to use commands/chat/or simply exit the mouse lock state TODO: temporary; we'll be using a special struct to handle states and inputs
+    // TODO: a global pushdown state-machine stack to create an pause menu
+    // TODO: also use cgmath's position and etc. for actual position to stay consistent
 
     let mut render = Render::new(physical.clone(), device.clone(),queue.clone(), surface.clone());
 
@@ -71,10 +72,10 @@ fn main() {
         let dimensions: [u32; 2] = surface.window().inner_size().into();
 
         match event {
-            Event::WindowEvent { event: event, .. } => {
+            Event::WindowEvent { event, .. } => {
                 match event {
                     WindowEvent::CloseRequested => {*control_flow = ControlFlow::Exit},
-                    WindowEvent::KeyboardInput { input: input, ..} => {
+                    WindowEvent::KeyboardInput { input, ..} => {
                         match input {
                             KeyboardInput { virtual_keycode: key, state: ElementState::Pressed, ..} => {
                                 match key.unwrap() {
@@ -83,6 +84,7 @@ fn main() {
                                         maximized = !maximized;
                                         surface.window().set_maximized(maximized);
                                     },
+                                    K::T => {cmd_mode = !cmd_mode},
                                     K::A => { if !pressed.contains(&K::A) {pressed.push(K::A);} },
                                     K::D => { if !pressed.contains(&K::D) {pressed.push(K::D);} },
                                     K::W => { if !pressed.contains(&K::W) {pressed.push(K::W);} },
@@ -108,20 +110,21 @@ fn main() {
                     _ => {}
                 }
             },
-            Event::DeviceEvent { event: DeviceEvent::MouseMotion { delta: delta }, .. } => {
+            Event::DeviceEvent { event: DeviceEvent::MouseMotion { delta }, .. } => {
                 // println!("{} {}", delta.0, delta.1);
-                rotation.x -= Deg(delta.1 as f32/10.0);
-                rotation.y += Deg(delta.0 as f32/10.0);
-                render.cam.rotate(delta.1 as f32, delta.0 as f32);
+                if !cmd_mode {
+                    rotation.x -= Deg(delta.1 as f32/10.0);
+                    rotation.y += Deg(delta.0 as f32/10.0);
+                    render.cam.rotate(delta.1 as f32, delta.0 as f32);
 
-                surface.window().set_cursor_position(
-                    Position::Physical(PhysicalPosition{ x: dimensions[0] as i32/2, y: dimensions[1] as i32/2 })
-                ).unwrap();
+                    surface.window().set_cursor_position(
+                        Position::Physical(PhysicalPosition{ x: dimensions[0] as i32/2, y: dimensions[1] as i32/2 })
+                    ).unwrap();
+                }
             },
             // this calls last after all the event finishes emitting
             // and only calls once, which is great for updating mutable variables since it'll be uniform
             Event::MainEventsCleared => {
-
                 if pressed.contains(&K::A) {render.cam.translate(-Rad(rotation.y).0.cos(), 0.0, Rad(rotation.y).0.sin())}
                 if pressed.contains(&K::D) {render.cam.translate(Rad(rotation.y).0.cos(), 0.0, -Rad(rotation.y).0.sin())}
                 if pressed.contains(&K::W) {render.cam.translate(Rad(rotation.y).0.sin(), 0.0, Rad(rotation.y).0.cos())}

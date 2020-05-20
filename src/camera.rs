@@ -34,6 +34,7 @@ impl Camera<vs::ty::Matrix> {
         self.position.x += x * self.trans_speed;
         self.position.y += y * self.trans_speed;
         self.position.z += z * self.trans_speed;
+        println!("Position: {:?}", self.position);
     }
 
     pub fn rotate(&mut self, x: f32, y: f32) {

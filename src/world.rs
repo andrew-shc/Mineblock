@@ -1,19 +1,14 @@
-use crate::mesh::mesh::Mesh;
 use crate::chunk::{Chunk, ChunkID};
 use crate::chunk::CHUNK_SIZE;
 use crate::texture::TextureAtlas;
-use crate::mesh::cube::Cube;
 use crate::renderer::CubeVtx;
 use crate::terrain::Terrain;
-use crate::renderer;
 use crate::mesh::mesh::Meshes;
 
-use vulkano::buffer::{CpuAccessibleBuffer, BufferUsage};
+use vulkano::buffer::CpuAccessibleBuffer;
 use vulkano::device::Device;
 use vulkano::device::Queue;
 use vulkano::pipeline::{GraphicsPipelineAbstract};
-use vulkano::command_buffer::{CommandBufferExecFuture, AutoCommandBuffer};
-use vulkano::sync::NowFuture;
 use vulkano::framebuffer::RenderPassAbstract;
 use vulkano::image::{SwapchainImage};
 use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
@@ -25,7 +20,6 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 use winit::window::Window;
-use winit::event::VirtualKeyCode::C;
 
 // world file
 // where block storage and block creation happen

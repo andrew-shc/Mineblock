@@ -1,3 +1,7 @@
+# v0.2.0 [May 20, 2020]
+* Chunks now optimized with transparent blocks
+* Added [T] key to escape the mouse lock (temp.)
+
 # v0.1.0 [May 18, 2020]
 * World is now rendered by chunks instead of each discrete block type.
 * Each chunk owns a block data, which gets converted into vertices and indices for rendering

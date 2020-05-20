@@ -1,14 +1,10 @@
 use crate::mesh::{
-    mesh::Mesh,
     mesh::Meshes
 };
 use crate::block::Block;
-use crate::renderer;
 
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::cell::Cell;
-use std::borrow::{BorrowMut, Borrow};
 
 
 pub const CHUNK_SIZE: usize = 32;

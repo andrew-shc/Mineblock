@@ -2,7 +2,6 @@ use crate::renderer::CubeVtx;
 use crate::texture::TextureAtlas;
 use crate::chunk::{CHUNK_SIZE, ChunkID};
 use crate::chunk::Chunk;
-use crate::renderer;
 use crate::block::Block;
 use crate::mesh::mesh::{
     Mesh,
@@ -23,7 +22,9 @@ use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::iter;
-use std::borrow::BorrowMut;
+use std::thread::sleep;
+use std::time::Duration;
+use std::ops::{Sub, Range};
 
 
 const CUBE_FACES: u32 = 6;
@@ -41,6 +42,17 @@ pub enum CubeFace {
     RIGHT,
     FRONT,
     BACK,
+}
+
+pub enum Bound {
+    UBound, // upper bound
+    LBound, // lower bound
+}
+
+pub enum Axis {
+    X,
+    Y,
+    Z
 }
 
 // Cube Mesh
@@ -134,59 +146,126 @@ impl Mesh for Cube {
         let mut vertices = Vec::with_capacity(CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*VERT_PER_CUBE as usize);
         let mut indices: Vec<u32> = Vec::with_capacity(CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*IND_PER_CUBE as usize);
 
+        let get_loc = |x, y, z| (x%CHUNK_SIZE)*CHUNK_SIZE*CHUNK_SIZE+(y%CHUNK_SIZE)*CHUNK_SIZE+(z%CHUNK_SIZE);  // the block location on the data
+
         for x in start[0]..=end[0] {
             for y in start[1]..=end[1] {
                 for z in start[2]..=end[2] {
-                    let index = (x%CHUNK_SIZE)*CHUNK_SIZE*CHUNK_SIZE+(y%CHUNK_SIZE)*CHUNK_SIZE+(z%CHUNK_SIZE);  // the block location on the data
-                    let block = block_data[index].clone();
+                    let block: Block = block_data[get_loc(x, y, z)].clone();
 
                     if block.mesh == MeshType::Cube {
-                        if start[0] == x {
+                        let mut faces = 0u8;
+
+                        // if if (1st: checks chunk border) {true} else {2nd: checks for nearby transparent block}
+                        if if start[0] == x {true} else {block_data[get_loc(x-1, y, z)].clone().transparent && !block.transparent} {  // left face
                             vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[2][3], });
                             vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[2][0], });
                             vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[2][1], });
                             vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[2][2], });
+                            faces += 1;
                         }
-                        if start[1] == y {
+                        if if start[1] == y {true} else {(block_data[get_loc(x, y-1, z)].clone().transparent && !block.transparent)} {  // bottom face
                             vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[1][0], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[1][1], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[1][2], });
                             vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[1][3], });
+                            faces += 1;
                         }
-                        if start[2] == z {
+                        if if start[2] == z {true} else {(block_data[get_loc(x, y, z-1)].clone().transparent && !block.transparent)} {  // front face
                             vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][0], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][1], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][2], });
                             vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][3], });
+                            faces += 1;
                         }
-                        if end[0] == x {
+                        if if end[0] == x {true} else {(block_data[get_loc(x+1, y, z)].clone().transparent && !block.transparent)} {  // right face
                             vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[3][3], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[3][0], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[3][1], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[3][2], });
+                            faces += 1;
                         }
-                        if end[1] == y {
+                        if if end[1] == y {true} else {(block_data[get_loc(x, y+1, z)].clone().transparent && !block.transparent)} {  // top face
                             vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[0][0], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[0][1], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[0][2], });
                             vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[0][3], });
+                            faces += 1;
                         }
-                        if end[2] == z {
+                        if if end[2] == z {true} else {(block_data[get_loc(x, y, z+1)].clone().transparent && !block.transparent)} {  // back face
                             vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][2], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][3], });
                             vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][0], });
                             vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][1], });
+                            faces += 1;
                         }
 
-                        indices.append(
-                            &mut vec![
-                                 0, 1, 2, 0, 2, 3,
-                                 4, 5, 6, 4, 6, 7,
-                                 8, 9,10, 8,10,11,
-                                12,13,14,12,14,15,
-                                16,17,18,16,18,19,
-                                20,21,22,20,22,23,].iter().map(|&x| x+(index*VERT_PER_CUBE as usize) as u32).collect()
-                        );
+                        // if x < end[0] && y < end[1] && z < end[2] {  // Upper bound
+                        //
+                        //     if start[0] == x || (block_data[get_loc(x-1, y, z)].clone().transparent && !block.transparent) {  // left face
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[2][3], });
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[2][0], });
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[2][1], });
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[2][2], });
+                        //         faces += 1;
+                        //     }
+                        //     if start[1] == y || (block_data[get_loc(x, y-1, z)].clone().transparent && !block.transparent) {  // bottom face
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[1][0], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[1][1], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[1][2], });
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[1][3], });
+                        //         faces += 1;
+                        //     }
+                        //     if start[2] == z || (block_data[get_loc(x, y, z-1)].clone().transparent && !block.transparent) {  // front face
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][0], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][1], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][2], });
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][3], });
+                        //         faces += 1;
+                        //     }
+                        // }
+                        //
+                        // if x > start[0] && y > start[1] && z > start[2] {  // Lower bound
+                        //     if end[0] == x || (block_data[get_loc(x+1, y, z)].clone().transparent && !block.transparent) {  // right face
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[3][3], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[3][0], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[3][1], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[3][2], });
+                        //         faces += 1;
+                        //     }
+                        //     if end[1] == y || (block_data[get_loc(x, y+1, z)].clone().transparent && !block.transparent) {  // top face
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[0][0], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[0][1], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[0][2], });
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[0][3], });
+                        //         faces += 1;
+                        //     }
+                        //     if end[2] == z || (block_data[get_loc(x, y, z+1)].clone().transparent && !block.transparent) {  // back face
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][2], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][3], });
+                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][0], });
+                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][1], });
+                        //         faces += 1;
+                        //     }
+                        // }
+
+                        for _ in 0..faces {
+                            if indices.is_empty() {
+                                indices.append(
+                                    &mut vec![
+                                        0, 1, 2,
+                                        0, 2, 3,
+                                    ]
+                                )
+                            } else {
+                                indices.append(
+                                    &mut vec![
+                                        0, 1, 2,
+                                        0, 2, 3,
+                                    ].iter().map(|&x| x+*indices.last().unwrap() as u32+1).collect()
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -194,20 +273,6 @@ impl Mesh for Cube {
 
         self.chunk_data.push((chunk, vertices, indices));
     }
-
-    // // index refers to the overall polygon
-    // fn onload_ind(&mut self, index: u32) {
-    //     // println!("#> {:?}", self.index);
-    //     self.index.append(
-    //         &mut vec![
-    //              0, 1, 2, 0, 2, 3,
-    //              4, 5, 6, 4, 6, 7,
-    //              8, 9,10, 8,10,11,
-    //             12,13,14,12,14,15,
-    //             16,17,18,16,18,19,
-    //             20,21,22,20,22,23,].iter().map(|&x| x+(index*6*4)).collect()
-    //     )
-    // }
 
     fn offload_chunk(&self, chunk: &Chunk) {
 
@@ -218,13 +283,8 @@ impl Mesh for Cube {
         let mut vtx_data = Vec::new();
 
         for (chunk, vertices, _indices) in self.chunk_data.iter() {
-            println!("CHUNK VISIBLE {:?}", chunk_data[chunk.0 as usize].visible);
             if chunk_data[chunk.0 as usize].visible { // TODO: safety check and map ID's when offloading chunk is used
-                println!("===== {:?}", vtx_data.len());
-                println!("===== {:?}", vertices.len());
-                // vtx_data.append(&mut vertices.clone());
                 vtx_data.extend(vertices.iter());
-                println!("----- {:?}", vtx_data.len());
             }
         }
         println!("Vertices retrieved: {:?}", vtx_data.len());
@@ -233,18 +293,21 @@ impl Mesh for Cube {
 
     fn retrieve_ind(&mut self, chunk_data: &Vec<Chunk>) -> Vec<u32> {
         // TODO: index can be pre-computed on the run without hassling chaing the indexes since chunk visibility varies
-        let mut ind_data = Vec::new();
+        let mut ind_data: Vec<u32> = Vec::new();
         let mut index: u32 = 0;
 
         for (chunk, _vertices, indices) in self.chunk_data.iter() {
-            // println!("CHUNK VISIBLE IND: {:?}, BASE INDEX: {:?}", chunk_data[chunk.0 as usize].visible, &index*CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*VERT_PER_CUBE as usize);
             if chunk_data[chunk.0 as usize].visible {
-                // ind_data.append(
-                //     &mut indices.iter().map(|&x| x+(&index*CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*VERT_PER_CUBE as usize) as u32).collect()
-                // );
-                ind_data.extend(
-                    indices.iter().map(|&x| x+(index*VERT_PER_CUBE))
-                );
+                if ind_data.is_empty() {
+                    ind_data.extend(
+                        indices.iter()
+                    );
+                } else {
+                    let ind_index = (*ind_data.last().unwrap()).clone();
+                    ind_data.extend(
+                        indices.iter().map(|&x| x+ind_index+1)
+                    );
+                }
                 index += 1;
             }
         }

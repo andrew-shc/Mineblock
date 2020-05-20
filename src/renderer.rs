@@ -1,4 +1,3 @@
-use crate::mesh::mesh::MeshType;
 use crate::world::World;
 use crate::mesh::cube::vs;
 use crate::camera::Camera;
@@ -9,23 +8,19 @@ use vulkano::device::{Device, Queue};
 use vulkano::image::{AttachmentImage, SwapchainImage};
 use vulkano::framebuffer::{FramebufferAbstract, RenderPassAbstract};
 use vulkano::{sync, swapchain};
-use vulkano::sync::{GpuFuture, FlushError, NowFuture};
+use vulkano::sync::{GpuFuture, FlushError};
 use winit::window::Window;
 use vulkano::swapchain::{Swapchain, SurfaceTransform, ColorSpace, PresentMode, FullscreenExclusive, SwapchainCreationError, AcquireError, Surface};
-use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState, CommandBufferExecFuture, AutoCommandBuffer};
+use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState};
 use vulkano::format::Format;
 use vulkano::framebuffer::Framebuffer;
-use vulkano::buffer::{CpuAccessibleBuffer, BufferUsage, TypedBufferAccess};
+use vulkano::buffer::{CpuAccessibleBuffer, TypedBufferAccess};
 use vulkano::instance::PhysicalDevice;
 use vulkano::pipeline::GraphicsPipelineAbstract;
-use vulkano::command_buffer::pool::standard::StandardCommandPoolAlloc;
 
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::borrow::BorrowMut;
-use std::iter::FromIterator;
-use std::convert::TryInto;
 
 
 pub trait Vertex {}
@@ -64,7 +59,7 @@ pub struct Render {
     vertices: Arc<CpuAccessibleBuffer<[CubeVtx]>>,
     indices: Arc<CpuAccessibleBuffer<[u32]>>,
 
-    textures: Vec<(Rc<TextureAtlas> /* CommandBufferExecFuture<NowFuture, AutoCommandBuffer<StandardCommandPoolAlloc>> */)>,
+    textures: Vec<Rc<TextureAtlas>>,
 
     pub world: World,
     pub cam: Camera<vs::ty::Matrix>,
