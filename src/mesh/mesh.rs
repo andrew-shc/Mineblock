@@ -29,7 +29,7 @@ pub trait Mesh {
     // TODO: move pipeline to the world struct
     fn pipeline(&self, device: Arc<Device>,
                 render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-                images: &Vec<Arc<SwapchainImage<Window>>>)
+                dimensions: [u32; 2])
         -> Arc<dyn GraphicsPipelineAbstract + Send + Sync>;  // returns the graphic pipeline of that mesh
     fn onload_data(&mut self, chunk: ChunkID, position: [f32; 3], block_data: &Vec<Block>);  // updates the vertex data
     fn offload_chunk(&self, chunk: &Chunk);
@@ -72,9 +72,9 @@ impl Meshes {
     pub fn retrieve_pipeline(&self,
                              device: Arc<Device>,
                              render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-                             images: &Vec<Arc<SwapchainImage<Window>>>
+                             dimensions: [u32; 2]
     ) -> Vec<Arc<dyn GraphicsPipelineAbstract + Send + Sync>> {
-        vec![self.cube.pipeline(device.clone(),render_pass.clone(), images)]
+        vec![self.cube.pipeline(device.clone(),render_pass.clone(), dimensions)]
     }
 
     pub fn cube_sets<'b, U: Send+Sync+'b, A: MemoryPool+Sync+'b>(&self, pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>, sub_buf: &CpuBufferPoolSubbuffer<U, A>) -> Vec<Arc<dyn DescriptorSet+Send+Sync+'b>>

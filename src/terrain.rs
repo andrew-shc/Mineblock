@@ -32,17 +32,19 @@ impl Terrain {
         println!("Input size constant pre-check: {:?} Blocks", size);
         println!("Terrain size allocated: {:?} Blocks", size*size*size);
 
+        let ground_level = 60;
+
         let mut block_data: Vec<Block> = Vec::with_capacity(size*size*size);
 
         for x in position[0]..position[0]+size as u32 {
             let num = rand::thread_rng().gen_range(0, 3);
             for y in position[1]..position[1]+size as u32 {
                 for z in position[2]..position[2]+size as u32  {
-                    if y >= 32-num as u32-1 {
+                    if y >= ground_level-num as u32-1 {
                         block_data.push(self.blocks["air"].clone());
-                    } else if y >= 32-num-2 {
+                    } else if y >= ground_level-num-2 {
                         block_data.push(self.blocks["grass"].clone());
-                    } else if y >= 32-num-5 {
+                    } else if y >= ground_level-num-5 {
                         block_data.push(self.blocks["dirt"].clone());
                     } else {
                         block_data.push(self.blocks["stone"].clone());

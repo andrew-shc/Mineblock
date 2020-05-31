@@ -22,17 +22,36 @@ use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
 
+// todo: TEMPORARY
+use std::iter;
+use vulkano::pipeline::viewport::Viewport;
+use vulkano::framebuffer::Subpass;
+use vulkano::pipeline::GraphicsPipeline;
+use vulkano::buffer::BufferUsage;
+use crate::ui::UIContext;
+
+pub mod tvs { vulkano_shaders::shader!{ty: "vertex", path: "resource/shaders/text.vert",} }
+pub mod tfs { vulkano_shaders::shader!{ty: "fragment", path: "resource/shaders/text.frag",} }
+
 
 pub trait Vertex {}
 
 
 #[derive(Default, Copy, Clone)]
-pub struct CubeVtx {
+pub struct CubeVtx {  // rename: TxtrVtx
     pub position: [f32; 3],
     pub txtr_crd: [f32; 2],
 }
 
+#[derive(Default, Copy, Clone)]
+pub struct UIVtx {
+    pub position: [f32; 2],
+    pub color: [f32; 4],
+}
+
 impl Vertex for CubeVtx {}
+impl Vertex for UIVtx {}
+
 
 impl fmt::Debug for CubeVtx {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -43,7 +62,17 @@ impl fmt::Debug for CubeVtx {
     }
 }
 
+impl fmt::Debug for UIVtx {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TextVtx")
+            .field("position", &self.position)
+            .field("color", &self.color)
+            .finish()
+    }
+}
+
 vulkano::impl_vertex!(CubeVtx, position, txtr_crd);
+vulkano::impl_vertex!(UIVtx, position, color);
 
 
 // a place where all the render data goes
@@ -58,6 +87,7 @@ pub struct Render {
     recreate: bool, // recreate swapchain
     vertices: Arc<CpuAccessibleBuffer<[CubeVtx]>>,
     indices: Arc<CpuAccessibleBuffer<[u32]>>,
+    pub ui: UIContext,
 
     textures: Vec<Rc<TextureAtlas>>,
 
@@ -116,9 +146,10 @@ impl Render {
             renderpass: renderpass.clone(),
 
             recreate: false,
-            pipeline: world.mesh_pipelines(device.clone(), renderpass.clone(), &images),
+            pipeline: world.mesh_pipelines(device.clone(), renderpass.clone(), dimensions),
             vertices: v,
             indices: i,
+            ui: UIContext::new(device.clone()),
 
             textures: vec![
                 (txtr.clone()),
@@ -129,11 +160,13 @@ impl Render {
         }
     }
 
-    pub fn update(&mut self, device: Arc<Device>, queue: Arc<Queue>, dimensions: [u32; 2],) {
+    pub fn update(&mut self, device: Arc<Device>, queue: Arc<Queue>, dimensions: [u32; 2]) {
         // cleans the buffer
         self.previous_frame.as_mut().unwrap().cleanup_finished();
 
         if self.recreate {
+            println!("CREATE AGAIN {:?}", dimensions);
+
             let (new_swapchain, new_images) = match self.swapchain.recreate_with_dimensions(dimensions) {
                 Ok(r) => r,
                 // This error tends to happen when the user is manually resizing the window.
@@ -145,7 +178,7 @@ impl Render {
 
             // recreate the framebuffer after recreating swapchain
             self.framebuffer = Self::frames(device.clone(), &new_images, self.renderpass.clone());
-            self.pipeline = self.world.mesh_pipelines(device.clone(), self.renderpass.clone(), &self.images);
+            self.pipeline = self.world.mesh_pipelines(device.clone(), self.renderpass.clone(), dimensions);
 
             self.recreate = false;
         }
@@ -166,9 +199,43 @@ impl Render {
 
         println!("Number of vertices rendering: {:?}", self.vertices.clone().len());
 
+        // let ltvs = tvs::Shader::load(device.clone()).expect("failed to create ui vertex shaders module");
+        // let ltfs = tfs::Shader::load(device.clone()).expect("failed to create ui fragment shaders module");
+        //
+        // // TODO: temporary
+        // let txt_pipeline = Arc::new(GraphicsPipeline::start()
+        //     .vertex_input_single_buffer::<TextVtx>()
+        //     .vertex_shader(ltvs.main_entry_point(), ())
+        //     .triangle_list()
+        //     .viewports_dynamic_scissors_irrelevant(1)
+        //     .viewports(iter::once(Viewport {
+        //         origin: [0.0, 0.0],
+        //         dimensions: [dimensions[0] as f32, dimensions[1] as f32],
+        //         depth_range: 0.0 .. 1.0,
+        //     }))
+        //     .fragment_shader(ltfs.main_entry_point(), ())
+        //     .cull_mode_front()
+        //     .render_pass(Subpass::from(self.renderpass.clone(), 0).unwrap())
+        //     .build(device.clone()).unwrap()) as Arc<dyn GraphicsPipelineAbstract + Send + Sync>;
+        //
+        // let txt_vtx: Vec<TextVtx> = vec![
+        //     TextVtx { position: [0.2, 0.2], color: [1.0, 1.0, 1.0] },
+        //     TextVtx { position: [0.2, 0.4], color: [0.0, 1.0, 1.0] },
+        //     TextVtx { position: [0.4, 0.4], color: [1.0, 0.0, 1.0] },
+        //     TextVtx { position: [0.4, 0.2], color: [1.0, 1.0, 0.0] },
+        //     TextVtx { position: [0.3, 0.1], color: [0.0, 0.0, 1.0] },
+        // ];
+        //
+        // let txt_ind: Vec<u32> = vec![
+        //     0, 2, 1, 4, 3, 0
+        // ];
+
+        let (vbo, ibo) = self.ui.render(device.clone());
+
         let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(device.clone(), queue.family()).unwrap()
             .begin_render_pass(self.framebuffer[image_num].clone(), false, vec![[0.1, 0.3, 1.0, 1.0].into(), 1f32.into()]).unwrap()
             .draw_indexed(self.pipeline[0].clone(), &DynamicState::none(), vec!(self.vertices.clone()), self.indices.clone(), sets.clone(), ()).unwrap()
+            .draw_indexed(self.ui.pipeline(device.clone(), dimensions, self.renderpass.clone()), &DynamicState::none(), vec!(vbo.clone()), ibo.clone(), (), ()).unwrap()
             .end_render_pass().unwrap()
             .build().unwrap();
 
@@ -178,7 +245,6 @@ impl Render {
             // submits present command to the GPU to the end of queue
             .then_swapchain_present(queue.clone(), self.swapchain.clone(), image_num)
             .then_signal_fence_and_flush();
-
 
 
         match future {

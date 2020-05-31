@@ -13,8 +13,11 @@ use cgmath::{Deg, Rad, Euler, Angle};
 
 
 use crate::renderer::Render;
+use crate::ui::Widget;
+use crate::ui::text::Text;
 
 mod mesh;
+mod ui;
 mod renderer;
 mod texture;
 mod chunk;
@@ -23,6 +26,7 @@ mod block;
 mod camera;
 mod sector;
 mod terrain;
+mod datatypes;
 
 
 fn main() {
@@ -66,10 +70,15 @@ fn main() {
 
     let mut render = Render::new(physical.clone(), device.clone(),queue.clone(), surface.clone());
 
+    render.ui.add_widget(Text::new("hola".into()));
+
     println!("PROGRAM - START MAIN LOOP");
 
     event_loop.run(move |event, _, control_flow| {
         let dimensions: [u32; 2] = surface.window().inner_size().into();
+        // println!("{:?}", dimensions);
+
+        render.ui.update(&event);
 
         match event {
             Event::WindowEvent { event, .. } => {

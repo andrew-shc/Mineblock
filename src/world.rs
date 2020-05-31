@@ -63,29 +63,12 @@ impl World {
         // + also add defualt texture loading error when no texture is available
         //      ^- add default texture before the loop
 
-        // let chunk1 = Chunk::new([0, 0, 0], self.cube_mesh.clone());
-        //
-        // let mut dirt = Block::new(self.cube_mesh.clone(), String::from("dirt"), vec![[2,0], [2,0], [2,0], [2, 0], [2,0], [2,0]], 0);
-        // let mut grass = Block::new(self.cube_mesh.clone(), String::from("grass"), vec![[0,0], [2,0], [1,0], [1,0], [1,0], [1,0]], 0);
-        //
-        // let world_size = 32;
-        //
-        // for x in 0..world_size {
-        //     for y in 0..world_size {
-        //         for z in 0..world_size {
-        //             if y < world_size-1 {
-        //                 dirt.create(x*world_size*world_size+y*world_size+z,
-        //                             [x as f32, y as f32, z as f32], vec![], [0.0, 0.0, 0.0], [world_size as f32, world_size as f32, world_size as f32]);
-        //             } else {
-        //                 grass.create(x*world_size*world_size+y*world_size+z,
-        //                             [x as f32, y as f32, z as f32], vec![], [0.0, 0.0, 0.0], [world_size as f32, world_size as f32, world_size as f32]);
-        //             }
-        //         }
-        //     }
-        // }
-
-        self.new_chunk([0,0,0]);
-        self.new_chunk([0,0,1]);
+        self.new_chunk([ 1, 1, 1]);
+        self.new_chunk([ 1, 1, 2]);
+        self.new_chunk([ 2, 1, 1]);
+        self.new_chunk([ 1, 1, 0]);
+        self.new_chunk([ 0, 1, 1]);
+        self.new_chunk([ 1, 0, 1]);
     }
 
     // update the world
@@ -99,7 +82,7 @@ impl World {
 
     pub fn new_chunk(&mut self, chunk_pos: [u32; 3]) {  // TODO: later it'll be new_sector()
         let position = [chunk_pos[0]*CHUNK_SIZE as u32, chunk_pos[1]*CHUNK_SIZE as u32, chunk_pos[2]*CHUNK_SIZE as u32];
-        let chunk  = Chunk::new(ChunkID(0), position, self.terrain.generate(&[0,0,0], CHUNK_SIZE));
+        let chunk  = Chunk::new(ChunkID(0), position, self.terrain.generate( &position, CHUNK_SIZE));  // &[0,0,0] <- to repeat same terrain generation @ [0,0,0] for each chunk
         chunk.render(self.meshes.clone());
 
         self.chunks.push(chunk);
@@ -114,9 +97,9 @@ impl World {
     pub fn mesh_pipelines(&mut self,
                           device: Arc<Device>,
                           render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-                          images: &Vec<Arc<SwapchainImage<Window>>>
+                          dimensions: [u32; 2]
     ) -> Vec<Arc<dyn GraphicsPipelineAbstract + Send + Sync>> {
-        (*self.meshes).borrow_mut().retrieve_pipeline(device.clone(), render_pass.clone(), &images)
+        (*self.meshes).borrow_mut().retrieve_pipeline(device.clone(), render_pass.clone(), dimensions)
     }
 
     pub fn cube_sets<'b, U: Send+Sync+'b, A: MemoryPool+Sync+'b>(&self, pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>, sub_buf: &CpuBufferPoolSubbuffer<U, A>) -> Vec<Arc<dyn DescriptorSet+Send+Sync+'b>>

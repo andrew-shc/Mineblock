@@ -108,10 +108,8 @@ impl Mesh for Cube {
     fn pipeline(&self,
                 device: Arc<Device>,
                 render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-                images: &Vec<Arc<SwapchainImage<Window>>>)
+                dimensions: [u32; 2])
                 -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
-        let dimensions = images[0].dimensions();
-
         Arc::new(GraphicsPipeline::start()
             .vertex_input_single_buffer::<Self::Vertex>()
             .vertex_shader(self.vtx_shader.main_entry_point(), ())
@@ -127,7 +125,8 @@ impl Mesh for Cube {
             .alpha_to_coverage_enabled()
             .depth_stencil_simple_depth()
             .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
-            .build(device.clone()).unwrap())
+            .build(device.clone()).unwrap()
+        )
     }
 
     fn onload_data(&mut self, chunk: ChunkID, position: [f32; 3], block_data: &Vec<Block>) {
@@ -199,55 +198,6 @@ impl Mesh for Cube {
                             vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][1], });
                             faces += 1;
                         }
-
-                        // if x < end[0] && y < end[1] && z < end[2] {  // Upper bound
-                        //
-                        //     if start[0] == x || (block_data[get_loc(x-1, y, z)].clone().transparent && !block.transparent) {  // left face
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[2][3], });
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[2][0], });
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[2][1], });
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[2][2], });
-                        //         faces += 1;
-                        //     }
-                        //     if start[1] == y || (block_data[get_loc(x, y-1, z)].clone().transparent && !block.transparent) {  // bottom face
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[1][0], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[1][1], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[1][2], });
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[1][3], });
-                        //         faces += 1;
-                        //     }
-                        //     if start[2] == z || (block_data[get_loc(x, y, z-1)].clone().transparent && !block.transparent) {  // front face
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][0], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][1], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][2], });
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[4][3], });
-                        //         faces += 1;
-                        //     }
-                        // }
-                        //
-                        // if x > start[0] && y > start[1] && z > start[2] {  // Lower bound
-                        //     if end[0] == x || (block_data[get_loc(x+1, y, z)].clone().transparent && !block.transparent) {  // right face
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[3][3], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[3][0], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[3][1], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[3][2], });
-                        //         faces += 1;
-                        //     }
-                        //     if end[1] == y || (block_data[get_loc(x, y+1, z)].clone().transparent && !block.transparent) {  // top face
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[0][0], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[0][1], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[0][2], });
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,0.0+z as f32], txtr_crd: block.texture_coord[0][3], });
-                        //         faces += 1;
-                        //     }
-                        //     if end[2] == z || (block_data[get_loc(x, y, z+1)].clone().transparent && !block.transparent) {  // back face
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][2], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,0.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][3], });
-                        //         vertices.push(Self::Vertex { position: [1.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][0], });
-                        //         vertices.push(Self::Vertex { position: [0.0+x as f32,1.0+y as f32,1.0+z as f32], txtr_crd: block.texture_coord[5][1], });
-                        //         faces += 1;
-                        //     }
-                        // }
 
                         for _ in 0..faces {
                             if indices.is_empty() {
