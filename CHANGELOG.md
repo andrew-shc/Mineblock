@@ -1,3 +1,7 @@
+### v0.2.2 [May 31, 2020]
+* Documented the file structure
+    * hopefully attracts some contributors later :)
+
 ### v0.2.1 [May 30, 2020]
 * Added basic UI support
     * Currently in Alpha phase
