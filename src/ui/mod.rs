@@ -11,44 +11,49 @@ use std::iter;
 use cgmath::vec1;
 use std::ops::Add;
 use winit::event::Event;
+use vulkano::descriptor::DescriptorSet;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub mod text;
 
 
-pub mod vs { vulkano_shaders::shader!{ty: "vertex", path: "resource/shaders/text.vert",} }
-pub mod fs { vulkano_shaders::shader!{ty: "fragment", path: "resource/shaders/text.frag",} }
+pub mod vs { vulkano_shaders::shader!{ty: "vertex", path: "resource/shaders/ui.vert",} }
+pub mod fs { vulkano_shaders::shader!{ty: "fragment", path: "resource/shaders/ui.frag",} }
 
 
 // a UI context for rendering GUI/HUD components for the game
 pub struct UIContext {
     vert_shd: vs::Shader,
     frag_shd: fs::Shader,
-    widgets: Vec<Box<dyn Widget>>
+    widgets: Vec<Rc<RefCell<dyn Widget>>>
 }
 
 impl UIContext {
     pub fn new(device: Arc<Device>) -> Self {
         Self {
-            vert_shd: vs::Shader::load(device.clone()).expect("failed to create ui vertex shaders module"),
-            frag_shd: fs::Shader::load(device.clone()).expect("failed to create ui fragment shaders module"),
+            vert_shd: vs::Shader::load(device.clone()).expect("failed to load ui vertex shaders module"),
+            frag_shd: fs::Shader::load(device.clone()).expect("failed to load ui fragment shaders module"),
             widgets: Vec::new(),
         }
     }
 
-    pub fn add_widget<T: 'static + Widget>(&mut self, w: T) {
-        self.widgets.push(Box::new(w));
+    pub fn add_widget<T: 'static + Widget>(&mut self, w: T) -> Rc<RefCell<T>> {
+        let wdg = Rc::new(RefCell::new(w));
+        self.widgets.push(wdg.clone());
+        wdg.clone()
     }
 
     pub fn update(&mut self, event: &Event<()>) {
-        for w in &mut self.widgets {
-            w.update(&event)
+        for w in &self.widgets {
+            (*w).borrow_mut().update(&event)
         }
     }
 
     pub fn render(&self, device: Arc<Device>) -> (Arc<CpuAccessibleBuffer<[UIVtx]>>, Arc<CpuAccessibleBuffer<[u32]>>) {
         let mut canvas = UICanvas::new();
         for w in &self.widgets {
-            w.render(&mut canvas)
+            (*w).borrow().render(&mut canvas)
         }
         let (vtx, ind) = canvas.flush();
 
@@ -68,10 +73,14 @@ impl UIContext {
                     dimensions: [u32; 2],
                     renderpass: Arc<dyn RenderPassAbstract + Send + Sync>)
         -> Arc<dyn GraphicsPipelineAbstract + Send + Sync> {
+        let spec_consts = vs::SpecializationConstants {
+            aspect_ratio: dimensions[0] as f32 / dimensions[1] as f32
+        };
+
         Arc::new(
             GraphicsPipeline::start()
                 .vertex_input_single_buffer::<UIVtx>()
-                .vertex_shader(self.vert_shd.main_entry_point(), ())
+                .vertex_shader(self.vert_shd.main_entry_point(), spec_consts)
                 .triangle_list()
                 .viewports_dynamic_scissors_irrelevant(1)
                 .viewports(iter::once(Viewport {
@@ -104,11 +113,11 @@ impl UICanvas {
         (self.vtx, self.ind)
     }
 
-    fn add_square(&mut self, pos: [f32; 2], size: [f32; 2], color: [f32; 4]) {
-        self.vtx.push(UIVtx {position: [pos[0]        , pos[0]+size[1]], color} ); // bottom right
-        self.vtx.push(UIVtx {position: [pos[0]        , pos[0]        ], color} ); // top right
-        self.vtx.push(UIVtx {position: [pos[0]+size[0], pos[0]        ], color} ); // top left
-        self.vtx.push(UIVtx {position: [pos[0]+size[0], pos[0]+size[1]], color} ); // bottom left
+    fn add_square(&mut self, pos: [f32; 2], size: f32, color: [f32; 4]) {
+        self.vtx.push(UIVtx {position: [pos[0]     , pos[1]+size], color} ); // bottom right
+        self.vtx.push(UIVtx {position: [pos[0]     , pos[1]     ], color} ); // top right
+        self.vtx.push(UIVtx {position: [pos[0]+size, pos[1]     ], color} ); // top left
+        self.vtx.push(UIVtx {position: [pos[0]+size, pos[1]+size], color} ); // bottom left
 
         if self.ind.is_empty() {
             self.ind.append(&mut vec![0, 1, 2, 0, 2, 3]);

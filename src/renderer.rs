@@ -2,6 +2,7 @@ use crate::world::World;
 use crate::mesh::cube::vs;
 use crate::camera::Camera;
 use crate::texture::TextureAtlas;
+use crate::ui::UIContext;
 
 use vulkano;
 use vulkano::device::{Device, Queue};
@@ -21,17 +22,6 @@ use vulkano::pipeline::GraphicsPipelineAbstract;
 use std::fmt;
 use std::rc::Rc;
 use std::sync::Arc;
-
-// todo: TEMPORARY
-use std::iter;
-use vulkano::pipeline::viewport::Viewport;
-use vulkano::framebuffer::Subpass;
-use vulkano::pipeline::GraphicsPipeline;
-use vulkano::buffer::BufferUsage;
-use crate::ui::UIContext;
-
-pub mod tvs { vulkano_shaders::shader!{ty: "vertex", path: "resource/shaders/text.vert",} }
-pub mod tfs { vulkano_shaders::shader!{ty: "fragment", path: "resource/shaders/text.frag",} }
 
 
 pub trait Vertex {}
@@ -199,43 +189,13 @@ impl Render {
 
         println!("Number of vertices rendering: {:?}", self.vertices.clone().len());
 
-        // let ltvs = tvs::Shader::load(device.clone()).expect("failed to create ui vertex shaders module");
-        // let ltfs = tfs::Shader::load(device.clone()).expect("failed to create ui fragment shaders module");
-        //
-        // // TODO: temporary
-        // let txt_pipeline = Arc::new(GraphicsPipeline::start()
-        //     .vertex_input_single_buffer::<TextVtx>()
-        //     .vertex_shader(ltvs.main_entry_point(), ())
-        //     .triangle_list()
-        //     .viewports_dynamic_scissors_irrelevant(1)
-        //     .viewports(iter::once(Viewport {
-        //         origin: [0.0, 0.0],
-        //         dimensions: [dimensions[0] as f32, dimensions[1] as f32],
-        //         depth_range: 0.0 .. 1.0,
-        //     }))
-        //     .fragment_shader(ltfs.main_entry_point(), ())
-        //     .cull_mode_front()
-        //     .render_pass(Subpass::from(self.renderpass.clone(), 0).unwrap())
-        //     .build(device.clone()).unwrap()) as Arc<dyn GraphicsPipelineAbstract + Send + Sync>;
-        //
-        // let txt_vtx: Vec<TextVtx> = vec![
-        //     TextVtx { position: [0.2, 0.2], color: [1.0, 1.0, 1.0] },
-        //     TextVtx { position: [0.2, 0.4], color: [0.0, 1.0, 1.0] },
-        //     TextVtx { position: [0.4, 0.4], color: [1.0, 0.0, 1.0] },
-        //     TextVtx { position: [0.4, 0.2], color: [1.0, 1.0, 0.0] },
-        //     TextVtx { position: [0.3, 0.1], color: [0.0, 0.0, 1.0] },
-        // ];
-        //
-        // let txt_ind: Vec<u32> = vec![
-        //     0, 2, 1, 4, 3, 0
-        // ];
-
         let (vbo, ibo) = self.ui.render(device.clone());
+        let ui_pipeline = self.ui.pipeline(device.clone(), dimensions, self.renderpass.clone());
 
         let command_buffer = AutoCommandBufferBuilder::primary_one_time_submit(device.clone(), queue.family()).unwrap()
             .begin_render_pass(self.framebuffer[image_num].clone(), false, vec![[0.1, 0.3, 1.0, 1.0].into(), 1f32.into()]).unwrap()
             .draw_indexed(self.pipeline[0].clone(), &DynamicState::none(), vec!(self.vertices.clone()), self.indices.clone(), sets.clone(), ()).unwrap()
-            .draw_indexed(self.ui.pipeline(device.clone(), dimensions, self.renderpass.clone()), &DynamicState::none(), vec!(vbo.clone()), ibo.clone(), (), ()).unwrap()
+            .draw_indexed(ui_pipeline.clone(), &DynamicState::none(), vec!(vbo.clone()), ibo.clone(), (), ()).unwrap()
             .end_render_pass().unwrap()
             .build().unwrap();
 

@@ -99,6 +99,7 @@ impl World {
                           render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
                           dimensions: [u32; 2]
     ) -> Vec<Arc<dyn GraphicsPipelineAbstract + Send + Sync>> {
+        // TODO: this code smells
         (*self.meshes).borrow_mut().retrieve_pipeline(device.clone(), render_pass.clone(), dimensions)
     }
 

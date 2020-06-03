@@ -1,3 +1,12 @@
+### Unreleased (Next Candidate)
+* Organize the ui module
+* Add automatic chunk loading when player moves
+* Add basic 2D Perlin Noise height map
+
+### v0.2.3 [June 2, 2020]
+* Fully functioning FPS reader
+* Also includes a working text widget (with limited characters [A-Z][0-9][ ])
+
 ### v0.2.2 [May 31, 2020]
 * Documented the file structure
     * hopefully attracts some contributors later :)

@@ -7,7 +7,7 @@ use vulkano::{
 use vulkano_win::VkSurfaceBuild;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
-use winit::dpi::{PhysicalPosition};
+use winit::dpi::{PhysicalPosition, Pixel};
 
 use cgmath::{Deg, Rad, Euler, Angle};
 
@@ -15,6 +15,9 @@ use cgmath::{Deg, Rad, Euler, Angle};
 use crate::renderer::Render;
 use crate::ui::Widget;
 use crate::ui::text::Text;
+use std::rc::Rc;
+use std::borrow::BorrowMut;
+use std::time::Instant;
 
 mod mesh;
 mod ui;
@@ -70,14 +73,24 @@ fn main() {
 
     let mut render = Render::new(physical.clone(), device.clone(),queue.clone(), surface.clone());
 
-    render.ui.add_widget(Text::new("hola".into()));
-
+    let txt = render.ui.add_widget(Text::new("FPS: 45".into(), [-0.9, -0.9], 0.01));
     println!("PROGRAM - START MAIN LOOP");
 
-    event_loop.run(move |event, _, control_flow| {
-        let dimensions: [u32; 2] = surface.window().inner_size().into();
-        // println!("{:?}", dimensions);
+    let mut frames = 0;
+    let mut start = Instant::now();
 
+    event_loop.run( move |event, _, control_flow| {
+        frames += 1;
+
+        let duration = start.elapsed().as_secs_f64();
+        if duration >= 1.0 {  // greater than 1 second
+            (*txt).borrow_mut().text = format!("FPS: {}", (frames as f64*(1.0/duration)).round() as u32);
+
+            frames = 0;
+            start = Instant::now();
+        }
+
+        let dimensions: [u32; 2] = surface.window().inner_size().into();
         render.ui.update(&event);
 
         match event {
