@@ -1,5 +1,7 @@
 use crate::chunk::{Chunk, ChunkID};
 use crate::chunk::CHUNK_SIZE;
+use crate::camera::Camera;
+use crate::camera::CHUNK_RADIUS;
 use crate::texture::TextureAtlas;
 use crate::renderer::CubeVtx;
 use crate::terrain::Terrain;
@@ -32,7 +34,8 @@ pub struct World {
     pub name: String,
     meshes: Rc<RefCell<Meshes>>,
     terrain: Terrain,
-    chunks: Vec<Chunk>,  // TODO: Use sector later as sector will hold chunks
+    chunks: Vec<Chunk>,
+    loaded_chunks: Vec<ChunkID>,
 }
 
 impl World {
@@ -44,6 +47,7 @@ impl World {
             terrain: Terrain::new(txtr.clone()),
 
             chunks: Vec::new(),
+            loaded_chunks: Vec::new(),
         }
     }
 
@@ -63,30 +67,75 @@ impl World {
         // + also add defualt texture loading error when no texture is available
         //      ^- add default texture before the loop
 
-        self.new_chunk([ 1, 1, 1]);
-        self.new_chunk([ 1, 1, 2]);
-        self.new_chunk([ 2, 1, 1]);
-        self.new_chunk([ 1, 1, 0]);
-        self.new_chunk([ 0, 1, 1]);
-        self.new_chunk([ 1, 0, 1]);
+        // let ply_pos: [u32; 3] = camera.chunk_pos().into();
+        //
+        // for x in 0..CHUNK_RADIUS as u32*2 {
+        //     for y in 0..CHUNK_RADIUS as u32*2 {
+        //         for z in 0..CHUNK_RADIUS as u32*2 {
+        //             let pos = [
+        //                 ply_pos[0]+x-CHUNK_RADIUS as u32,
+        //                 ply_pos[1]+y-CHUNK_RADIUS as u32,
+        //                 ply_pos[2]+z-CHUNK_RADIUS as u32,
+        //             ];
+        //             if pos[0] > 0 && pos[1] > 0 && pos[2] > 0 {
+        //                 self.load_chunk(pos);
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     // update the world
-    pub fn update() {
+    pub fn update<T>(&mut self, camera: &Camera<T>) -> Option<u32> {
         // block position update
 
+        let ply_pos = [camera.chunk_pos()[0] as u32, camera.chunk_pos()[1] as u32, camera.chunk_pos()[2] as u32];
+
+        let mut chunk_loaded = 0;
+        for x in 0..CHUNK_RADIUS as u32*2 {
+            for y in 0..CHUNK_RADIUS as u32*2 {
+                for z in 0..CHUNK_RADIUS as u32*2 {
+                    if  ply_pos[0] as i32+x as i32-CHUNK_RADIUS as i32 > 0 &&
+                        ply_pos[1] as i32+y as i32-CHUNK_RADIUS as i32 > 0 &&
+                        ply_pos[2] as i32+z as i32-CHUNK_RADIUS as i32 > 0 {
+                        if self.load_chunk([
+                            (ply_pos[0]+x-CHUNK_RADIUS as u32),
+                            (ply_pos[1]+y-CHUNK_RADIUS as u32),
+                            (ply_pos[2]+z-CHUNK_RADIUS as u32),
+                        ]) {
+                            chunk_loaded += 1;
+                        }
+                    }
+                }
+            }
+        }
 
         // lighting update
         // etc ...
+        if chunk_loaded == 0 {
+            None
+        } else {
+            Some(chunk_loaded)
+        }
     }
 
-    pub fn new_chunk(&mut self, chunk_pos: [u32; 3]) {  // TODO: later it'll be new_sector()
-        let position = [chunk_pos[0]*CHUNK_SIZE as u32, chunk_pos[1]*CHUNK_SIZE as u32, chunk_pos[2]*CHUNK_SIZE as u32];
-        let chunk  = Chunk::new(ChunkID(0), position, self.terrain.generate( &position, CHUNK_SIZE));  // &[0,0,0] <- to repeat same terrain generation @ [0,0,0] for each chunk
-        chunk.render(self.meshes.clone());
+    pub fn load_chunk(&mut self, chunk_pos: [u32; 3]) -> bool {  // returns if the chunk loaded successfully
+        let new_id = ChunkID(chunk_pos[0],chunk_pos[1],chunk_pos[2]);
+        if !self.loaded_chunks.contains(&new_id) {
+            let position = [chunk_pos[0]*CHUNK_SIZE as u32, chunk_pos[1]*CHUNK_SIZE as u32, chunk_pos[2]*CHUNK_SIZE as u32];
+            let chunk  = Chunk::new(new_id, position, self.terrain.generate( &position, CHUNK_SIZE));  // &[0,0,0] <- to repeat same terrain generation @ [0,0,0] for each chunk
+            chunk.render(self.meshes.clone());
 
-        self.chunks.push(chunk);
-        println!("Chunks loaded: {:?}", self.chunks.len());
+            self.loaded_chunks.push(chunk.id);
+            self.chunks.push(chunk);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn offload_chunk() {
+
     }
 
 

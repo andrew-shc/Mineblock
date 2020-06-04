@@ -7,7 +7,6 @@
 | datatype.rs* | A file for holding all the data struct types for consistency and uniformity of types |
 | main.rs | Setup and the main rendering loop |
 | renderer.rs | A struct for holding all the rendering information to be rendered |
-| sector.rs* | The struct for holding sectors (which supposedly hold chunks) |
 | player.rs**  | Holds camera struct and pertains inventory, effects on the player information  |
 | terrain.rs | A struct for holding the instances of blocks to be readily available when generating the terrain |
 | texture.rs | A texture manager for specific types of meshes |

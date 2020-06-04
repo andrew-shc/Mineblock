@@ -32,7 +32,7 @@ impl Terrain {
         println!("Input size constant pre-check: {:?} Blocks", size);
         println!("Terrain size allocated: {:?} Blocks", size*size*size);
 
-        let ground_level = 60;
+        let ground_level = 120;
 
         let mut block_data: Vec<Block> = Vec::with_capacity(size*size*size);
 

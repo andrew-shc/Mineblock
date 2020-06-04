@@ -27,58 +27,17 @@ use std::time::Duration;
 use std::ops::{Sub, Range};
 
 
-const CUBE_FACES: u32 = 6;
-const VERT_PER_FACE: u32 = 4;
-const VERT_PER_CUBE: u32 = CUBE_FACES*VERT_PER_FACE;
-const IND_PER_FACE: u32 = 6;
-const IND_PER_CUBE: u32 = CUBE_FACES*IND_PER_FACE;
-
-
-#[derive(Eq, PartialEq)]
-pub enum CubeFace {
-    TOP,
-    BOTTOM,
-    LEFT,
-    RIGHT,
-    FRONT,
-    BACK,
-}
-
-pub enum Bound {
-    UBound, // upper bound
-    LBound, // lower bound
-}
-
-pub enum Axis {
-    X,
-    Y,
-    Z
-}
-
-// Cube Mesh
-// - stores all the mesh info
-// - to get a block from the mesh, you must retrieve it from a mesh struct like Cube
-
-pub mod vs { vulkano_shaders::shader!{ty: "vertex", path: "resource/shaders/cube.vert",} }
-pub mod fs { vulkano_shaders::shader!{ty: "fragment", path: "resource/shaders/cube.frag",} }
+pub mod vs { vulkano_shaders::shader!{ty: "vertex", path: "resource/shaders/line.vert",} }
+pub mod fs { vulkano_shaders::shader!{ty: "fragment", path: "resource/shaders/line.frag",} }
 
 pub struct Cube {
-    pub texture: Rc<TextureAtlas>,  // texture image
-    chunk_data: Vec<(ChunkID, Vec<<Cube as Mesh>::Vertex>, Vec<u32>)>, // (chunk id, vert data, index data)
-    // pub index: Vec<u32>,
-    sampler: Arc<Sampler>,  // texture sampler
     vtx_shader: vs::Shader,
     frg_shader: fs::Shader,
 }
 
 impl Cube {
     pub fn new(device: Arc<Device>, texture: Rc<TextureAtlas>) -> Cube {
-        // Filter::Nearest for rendering each pixel instead of "smudging" between the adjacent pixels
-        let sampler = Sampler::new(device.clone(), Filter::Nearest, Filter::Nearest,
-                                   MipmapMode::Nearest, SamplerAddressMode::Repeat, SamplerAddressMode::Repeat,
-                                   SamplerAddressMode::Repeat, 0.0, 1.0, 0.0, 0.0).unwrap();
-
-        Cube { texture: texture.clone(), sampler: sampler, chunk_data: Vec::new(),
+        Cube {
             vtx_shader: vs::Shader::load(device.clone()).expect("failed to create cube vertex shaders module"),
             frg_shader: fs::Shader::load(device.clone()).expect("failed to create cube fragment shaders module")
         }
@@ -87,12 +46,6 @@ impl Cube {
     pub fn descriptors<'b, U: Send+Sync+'b, A: MemoryPool+Sync+'b>(&self, pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>, sub_buf: &CpuBufferPoolSubbuffer<U, A>) -> Vec<Arc<dyn DescriptorSet+Send+Sync+'b>>
         where <A as MemoryPool>::Alloc: Send+Sync
     {
-        let layout0 = pipeline.descriptor_set_layout(0).unwrap();
-        let set0 = Arc::new(PersistentDescriptorSet::start(layout0.clone())
-            .add_sampled_image(self.texture.texture.clone(), self.sampler.clone()).unwrap()
-            .build().unwrap()
-        );
-
         let layout1 = pipeline.descriptor_set_layout(1).unwrap();
         let set1 = Arc::new(PersistentDescriptorSet::start(layout1.clone())
             .add_buffer(sub_buf.clone()).unwrap()
@@ -113,7 +66,7 @@ impl Mesh for Cube {
         Arc::new(GraphicsPipeline::start()
             .vertex_input_single_buffer::<Self::Vertex>()
             .vertex_shader(self.vtx_shader.main_entry_point(), ())
-            .triangle_list()
+            .line_list()
             .viewports_dynamic_scissors_irrelevant(1)
             .viewports(iter::once(Viewport {
                 origin: [0.0, 0.0],
@@ -122,14 +75,13 @@ impl Mesh for Cube {
             }))
             .fragment_shader(self.frg_shader.main_entry_point(), ())
             .cull_mode_front()  // face culling for optimization
-            .alpha_to_coverage_enabled()
             .depth_stencil_simple_depth()
             .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
             .build(device.clone()).unwrap()
         )
     }
 
-    fn onload_data(&mut self, chunk_id: ChunkID, position: [f32; 3], block_data: &Vec<Block>) {
+    fn onload_data(&mut self, chunk: ChunkID, position: [f32; 3], block_data: &Vec<Block>) {
         let start = [
             position.clone()[0] as usize,
             position.clone()[1] as usize,
@@ -221,20 +173,19 @@ impl Mesh for Cube {
             }
         }
 
-        self.chunk_data.push((chunk_id, vertices, indices));
+        self.chunk_data.push((chunk, vertices, indices));
     }
 
     fn offload_chunk(&self, chunk: &Chunk) {
 
     }
 
-    fn retrieve_vert(&mut self, chunks: &Vec<Chunk>) -> Vec<Self::Vertex> {
+    fn retrieve_vert(&mut self, chunk_data: &Vec<Chunk>) -> Vec<Self::Vertex> {
         println!("Chunk datas in Cube Mesh: {:?}", self.chunk_data.len());
         let mut vtx_data = Vec::new();
 
-        for (chunk_id, vertices, _indices) in self.chunk_data.iter() {
-            if chunks.iter().filter(|c| &c.id == chunk_id).last().unwrap().visible { // TODO: safety check and map ID's when offloading chunk is used
-                println!("YES");
+        for (chunk, vertices, _indices) in self.chunk_data.iter() {
+            if chunk_data[chunk.0 as usize].visible { // TODO: safety check and map ID's when offloading chunk is used
                 vtx_data.extend(vertices.iter());
             }
         }
@@ -242,13 +193,13 @@ impl Mesh for Cube {
         vtx_data
     }
 
-    fn retrieve_ind(&mut self, chunks: &Vec<Chunk>) -> Vec<u32> {
+    fn retrieve_ind(&mut self, chunk_data: &Vec<Chunk>) -> Vec<u32> {
         // TODO: index can be pre-computed on the run without hassling chaing the indexes since chunk visibility varies
         let mut ind_data: Vec<u32> = Vec::new();
         let mut index: u32 = 0;
 
-        for (chunk_id, _vertices, indices) in self.chunk_data.iter() {
-            if chunks.iter().filter(|c| &c.id == chunk_id).last().unwrap().visible {
+        for (chunk, _vertices, indices) in self.chunk_data.iter() {
+            if chunk_data[chunk.0 as usize].visible {
                 if ind_data.is_empty() {
                     ind_data.extend(
                         indices.iter()

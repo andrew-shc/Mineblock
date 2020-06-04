@@ -19,9 +19,9 @@ use vulkano::buffer::{CpuAccessibleBuffer, TypedBufferAccess};
 use vulkano::instance::PhysicalDevice;
 use vulkano::pipeline::GraphicsPipelineAbstract;
 
-use std::fmt;
+use std::{fmt, thread};
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, mpsc};
 
 
 pub trait Vertex {}
@@ -122,8 +122,9 @@ impl Render {
 
         let (txtr, future) = TextureAtlas::load(queue.clone(), include_bytes!("../resource/texture/texture2.png").to_vec(), 16);
 
+        let cam = Camera::new(device.clone(), 0.1, 0.125);
         let mut world = World::new(String::from("World 0"), device.clone(), queue.clone(), txtr.clone());
-        world.instantiate();
+        // world.instantiate();
 
         let mut mesh_data = world.mesh_datas(device.clone());
         let (v, i) = mesh_data.pop().unwrap();
@@ -146,13 +147,20 @@ impl Render {
             ],
 
             world: world,
-            cam: Camera::new(device.clone(), 0.1, 0.125),
+            cam: cam,
         }
     }
 
     pub fn update(&mut self, device: Arc<Device>, queue: Arc<Queue>, dimensions: [u32; 2]) {
         // cleans the buffer
         self.previous_frame.as_mut().unwrap().cleanup_finished();
+
+        if let Some(chunk_loaded) = self.world.update(&self.cam) {
+            let mut mesh_data = self.world.mesh_datas(device.clone());
+            let (v, i) = mesh_data.pop().unwrap();
+            self.vertices = v;
+            self.indices = i;
+        }
 
         if self.recreate {
             println!("CREATE AGAIN {:?}", dimensions);

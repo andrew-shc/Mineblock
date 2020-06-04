@@ -1,7 +1,13 @@
 ### Unreleased (Next Candidate)
 * Organize the ui module
-* Add automatic chunk loading when player moves
 * Add basic 2D Perlin Noise height map
+
+### v0.2.5 [June 4, 2020]
+* Automatic chunk loading (very slow; unoptimized)
+    * Threading is difficult so I'll refactor the whole thing under a new repository (TheEndlessWorld)
+
+### v0.2.4 [June 3, 2020]
+* Removed sector and changed chunk side to 64x64x64
 
 ### v0.2.3 [June 2, 2020]
 * Fully functioning FPS reader

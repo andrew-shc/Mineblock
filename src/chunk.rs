@@ -7,22 +7,17 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 
-pub const CHUNK_SIZE: usize = 32;
-// a chunk is a size of 32x32x32 Blocks
+pub const CHUNK_SIZE: usize = 64;
+// a chunk is a size of 64x64x64 Blocks
 
-#[derive(Copy, Clone)]
-pub struct ChunkID(pub u16);  // Chunk ID on render data
+#[derive(Copy, Clone, PartialEq)]
+pub struct ChunkID(pub u32, pub u32, pub u32);  // Chunk ID on render data & auto generation
 
 pub struct Chunk {
     pub id: ChunkID,
     pub visible: bool,
     position: [u32; 3],  // position is relative towards to its parent sector; in chunks
     block_data: Vec<Block>,
-
-    // TODO: From Sector (nothing)
-
-    // TODO: From World
-    // meshes: Vec<Cell<dyn Mesh>>,
 }
 
 impl Chunk {
@@ -43,11 +38,11 @@ impl Chunk {
         (*meshes).borrow_mut().onload_data(self.id, [self.position[0] as f32, self.position[1] as f32, self.position[2] as f32], &self.block_data);
     }
 
-    fn regen(&mut self) {
-
+    pub fn update(&mut self) {
     }
 
-    pub fn update(&mut self) {
+    fn regen(&mut self) {
+
     }
 
     pub fn save(&self) {

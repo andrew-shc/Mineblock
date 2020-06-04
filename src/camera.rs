@@ -1,4 +1,5 @@
 use crate::mesh::cube::vs;
+use crate::chunk::CHUNK_SIZE;
 
 use vulkano::buffer::{CpuBufferPool};
 use vulkano::device::Device;
@@ -9,16 +10,19 @@ use std::sync::Arc;
 use vulkano::buffer::cpu_pool::CpuBufferPoolSubbuffer;
 use vulkano::memory::pool::StdMemoryPool;
 
+
+pub const CHUNK_RADIUS: u16 = 2;  // Player's chunk radius
+
 pub struct Camera<T> {
     rot_speed: f32,
     trans_speed: f32,  // normalized relative to the screen size
     fov: Deg<f32>,
     mat_buf: CpuBufferPool<T>,  // matrix buffer
-    position: Point3<f32>,
-    rotation: Euler<Deg<f32>>,
+    pub position: Point3<f32>,
+    pub rotation: Euler<Deg<f32>>,
 }
 
-impl Camera<vs::ty::Matrix> {
+impl<T> Camera<T> {
     pub fn new(device: Arc<Device>, rot_speed: f32, trans_speed: f32) -> Self {
         Self {
             rot_speed: rot_speed,
@@ -43,6 +47,16 @@ impl Camera<vs::ty::Matrix> {
         self.rotation.y += Deg(y * self.rot_speed);
     }
 
+    pub fn chunk_pos(&self) -> [usize; 3] {
+        [
+            (self.position.x/CHUNK_SIZE as f32).floor() as usize,
+            (self.position.y/CHUNK_SIZE as f32).floor() as usize,
+            (self.position.z/CHUNK_SIZE as f32).floor() as usize,
+        ]
+    }
+}
+
+impl Camera<vs::ty::Matrix> {
     pub fn mat_buf(&self, dimensions: [u32; 2]) -> CpuBufferPoolSubbuffer<vs::ty::Matrix, Arc<StdMemoryPool>> {
         // retrieves the matrix buffer from the camera
 

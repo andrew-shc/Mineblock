@@ -21,13 +21,14 @@ use std::time::Instant;
 
 mod mesh;
 mod ui;
+// mod hud;
+
 mod renderer;
 mod texture;
 mod chunk;
 mod world;
 mod block;
 mod camera;
-mod sector;
 mod terrain;
 mod datatypes;
 
@@ -73,7 +74,7 @@ fn main() {
 
     let mut render = Render::new(physical.clone(), device.clone(),queue.clone(), surface.clone());
 
-    let txt = render.ui.add_widget(Text::new("FPS: 45".into(), [-0.9, -0.9], 0.01));
+    let txt = render.ui.add_widget(Text::new("FPS: 0".into(), [-0.9, -0.9], 0.01));
     println!("PROGRAM - START MAIN LOOP");
 
     let mut frames = 0;

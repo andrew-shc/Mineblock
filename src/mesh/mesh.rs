@@ -42,6 +42,7 @@ use crate::mesh::cube::Cube;
 use crate::texture::TextureAtlas;
 
 pub struct Meshes {
+    // lines: u8,  // generic lines for debugging (chunk borders, etc.) or block borders
     cube: Cube,
     // flora: M,
 }
